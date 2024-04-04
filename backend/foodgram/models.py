@@ -29,7 +29,7 @@ class Tag(models.Model):
         max_length=25,
         verbose_name='Название тега'
     )
-    color_code = models.CharField(
+    color = models.CharField(
         max_length=7,
         verbose_name='Цвет'
     )
@@ -45,7 +45,11 @@ class Tag(models.Model):
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
-        unique_together = ('name', 'color_code', 'slug')
+        unique_together = (
+            'name',
+            'color',
+            'slug'
+        )
 
 
 class Recipe(models.Model):
@@ -77,6 +81,9 @@ class Recipe(models.Model):
     cooking_time = models.IntegerField(
         verbose_name='Время приготовления'
     )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
 
     def __str__(self):
         return self.name
@@ -84,3 +91,4 @@ class Recipe(models.Model):
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
+        ordering = ('-created_at',)
