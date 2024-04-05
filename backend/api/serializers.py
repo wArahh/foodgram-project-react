@@ -1,9 +1,23 @@
 import base64
 
 from django.core.files.base import ContentFile
+from djoser.serializers import UserSerializer
 from rest_framework import serializers
 
-from foodgram.models import Ingredient, Tag, Recipe
+from foodgram.models import Ingredient, Tag, Recipe, User
+
+
+class CustomUserSerializer(UserSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'username',
+            'first_name',
+            'last_name'
+        )
+        required_fields = fields
 
 
 class Base64ImageField(serializers.ImageField):
