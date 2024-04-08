@@ -4,7 +4,7 @@ from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
 from rest_framework import serializers
 
-from foodgram.models import Ingredient, Tag, Recipe, User
+from foodgram.models import Ingredient, Tag, Recipe, User, FavoriteRecipe
 
 
 class CustomUserSerializer(UserSerializer):
@@ -16,6 +16,7 @@ class CustomUserSerializer(UserSerializer):
             'username',
             'first_name',
             'last_name'
+            'password'
         )
         required_fields = fields
 
@@ -65,8 +66,6 @@ class RecipeSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True
     )
-    is_favorited = serializers.BooleanField()
-    is_in_shopping_cart = serializers.BooleanField()
     image = Base64ImageField()
 
     class Meta:
@@ -76,11 +75,20 @@ class RecipeSerializer(serializers.ModelSerializer):
             'tags',
             'author',
             'ingredients',
-            'is_favorited',
-            'is_in_shopping_cart',
             'name',
             'image',
             'text',
             'cooking_time'
         )
 
+
+class FavoriteRecipeSerializer(serializers.ModelSerializer):
+    recipe = RecipeSerializer()
+
+    class Meta:
+        model = FavoriteRecipe
+        fields = (
+            'id',
+            'user',
+            'recipe'
+        )

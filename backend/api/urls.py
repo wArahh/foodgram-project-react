@@ -2,7 +2,7 @@ from django.urls import include, path
 from rest_framework.authtoken import views
 from rest_framework.routers import SimpleRouter
 
-from .views import IngredientViewSet, TagViewSet, RecipeViewSet
+from .views import IngredientViewSet, TagViewSet, RecipeViewSet, FavouriteRecipeViewSet
 
 router_v1 = SimpleRouter()
 router_v1.register(
@@ -19,6 +19,11 @@ router_v1.register(
     r'recipes',
     RecipeViewSet,
     basename='recipes'
+)
+router_v1.register(
+    r'recipes/(?P<recipe_id>\d+)/favorite',
+    FavouriteRecipeViewSet,
+    basename='favourite_recipe'
 )
 
 urlpatterns = [

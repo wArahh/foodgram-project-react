@@ -1,6 +1,7 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, mixins, pagination
 
-from foodgram.models import Ingredient, Tag, Recipe
+from foodgram.models import Ingredient, Tag, Recipe, FavoriteRecipe
 from .serializers import IngredientSerializer, TagSerializer, RecipeSerializer
 
 
@@ -30,3 +31,27 @@ class RecipeViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.AllowAny,)
     pagination_class = (pagination.LimitOffsetPagination,)
     http_method_names = ('get', 'post', 'patch', 'delete',)
+
+
+class FavouriteRecipeViewSet(viewsets.ModelViewSet):
+    serializer_class = FavoriteRecipe
+    pagination_class = (pagination.LimitOffsetPagination,)
+    http_method_names = ('post', 'delete',)
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_recipe(self):
+        return get_object_or_404(
+            Recipe,
+            id=self.kwargs.get('recipe_id')
+        )
+
+    def get_queryset(self):
+        return FavoriteRecipe.objects.filter(
+            recipe=self.get_recipe()
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(
+            author=self.request.user,
+            recipe=self.get_recipe()
+        )
