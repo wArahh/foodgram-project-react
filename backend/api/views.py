@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, permissions, mixins, pagination, status
+from rest_framework import viewsets, permissions, mixins, pagination, status, generics
 
 from foodgram.models import (
     Ingredient,
@@ -14,8 +14,39 @@ from .serializers import (
     TagSerializer,
     RecipeSerializer,
     FavoriteRecipeSerializer,
-    RecipeShoppingCartSerializer
+    RecipeShoppingCartSerializer,
+    FollowSerializer,
+    GETFollowListSerializer,
+    ProfileSerializer,
+    User
 )
+
+
+class FollowViewSet(
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
+    serializer_class = FollowSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return self.request.user.follower.all()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class GETFollowList(
+    generics.ListAPIView,
+    viewsets.GenericViewSet
+):
+    serializer_class = GETFollowListSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = pagination.PageNumberPagination
+
+    def get_queryset(self):
+        return self.request.user.follower.all()
 
 
 class GetOnly(
@@ -92,4 +123,18 @@ class GETShoppingCartText(
         return Response(
             data=response.data,
             status=status.HTTP_200_OK
+        )
+
+
+class GETProfile(
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
+    serializer_class = ProfileSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def get_queryset(self):
+        return get_object_or_404(
+            User,
+            id=self.request.user.id
         )

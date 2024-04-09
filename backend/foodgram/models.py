@@ -38,6 +38,25 @@ class User(AbstractBaseUser):
         return self.email
 
 
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower'
+    )
+    following = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+    )
+
+    class Meta:
+        unique_together = (
+            'user',
+            'following'
+        )
+
+
 class Ingredient(models.Model):
     name = models.CharField(
         max_length=200,
