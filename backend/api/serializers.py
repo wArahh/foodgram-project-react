@@ -3,7 +3,6 @@ import base64
 from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
 from rest_framework import serializers, fields, validators, exceptions
-
 from foodgram.models import Ingredient, Tag, Recipe, User, FavoriteRecipe, RecipeShoppingCart, Follow
 
 
