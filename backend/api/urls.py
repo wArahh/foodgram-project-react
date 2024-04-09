@@ -29,8 +29,5 @@ router_v1.register(
 urlpatterns = [
     path('', include(router_v1.urls)),
     path('', include('djoser.urls')),
-    path('auth/token/login/', views.obtain_auth_token, name='token_login'),
-    path('auth/token/logout/', views.obtain_auth_token, name='token_logout'),
+    path('auth/', include('djoser.urls.authtoken'))
 ]
-
-
