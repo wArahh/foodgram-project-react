@@ -1,8 +1,21 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, permissions, mixins, pagination
+from rest_framework import viewsets, permissions, mixins, pagination, status
 
-from foodgram.models import Ingredient, Tag, Recipe, FavoriteRecipe
-from .serializers import IngredientSerializer, TagSerializer, RecipeSerializer
+from foodgram.models import (
+    Ingredient,
+    Tag,
+    Recipe,
+    FavoriteRecipe
+)
+from rest_framework.response import Response
+
+from .serializers import (
+    IngredientSerializer,
+    TagSerializer,
+    RecipeSerializer,
+    FavoriteRecipeSerializer,
+    RecipeShoppingCartSerializer
+)
 
 
 class GetOnly(
@@ -33,7 +46,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     http_method_names = ('get', 'post', 'patch', 'delete',)
 
 
-class FavouriteRecipeViewSet(viewsets.ModelViewSet):
+class RecipeSectionViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteRecipe
     pagination_class = (pagination.LimitOffsetPagination,)
     http_method_names = ('post', 'delete',)
@@ -54,4 +67,29 @@ class FavouriteRecipeViewSet(viewsets.ModelViewSet):
         serializer.save(
             author=self.request.user,
             recipe=self.get_recipe()
+        )
+
+
+class FavouriteRecipeViewSet(RecipeSectionViewSet):
+    serializer_class = FavoriteRecipeSerializer
+
+
+class RecipeShoppingCartViewSet(RecipeSectionViewSet):
+    serializer_class = RecipeShoppingCartSerializer
+
+
+class GETShoppingCartText(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
+    serializer_class = RecipeShoppingCartSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        with open('shopping_cart.txt', 'w') as file:
+            file.write(str(response.data))
+        return Response(
+            data=response.data,
+            status=status.HTTP_200_OK
         )

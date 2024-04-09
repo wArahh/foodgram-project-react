@@ -126,7 +126,7 @@ class Recipe(models.Model):
         ordering = ('-created_at',)
 
 
-class FavoriteRecipe(models.Model):
+class RecipeSection(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -145,10 +145,21 @@ class FavoriteRecipe(models.Model):
         return self.recipe.name
 
     class Meta:
-        verbose_name = 'Любимый рецепт'
-        verbose_name_plural = 'Любимые рецепты'
         unique_together = (
             'user',
             'recipe'
         )
         ordering = ('-added_at',)
+
+
+class FavoriteRecipe(RecipeSection):
+    class Meta:
+        verbose_name = 'Любимый рецепт'
+        verbose_name_plural = 'Любимые рецепты'
+
+
+class RecipeShoppingCart(RecipeSection):
+    class Meta:
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+

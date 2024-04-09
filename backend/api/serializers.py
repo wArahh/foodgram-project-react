@@ -4,7 +4,7 @@ from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
 from rest_framework import serializers
 
-from foodgram.models import Ingredient, Tag, Recipe, User, FavoriteRecipe
+from foodgram.models import Ingredient, Tag, Recipe, User, FavoriteRecipe, RecipeShoppingCart
 
 
 class CustomUserSerializer(UserSerializer):
@@ -82,13 +82,23 @@ class RecipeSerializer(serializers.ModelSerializer):
         )
 
 
-class FavoriteRecipeSerializer(serializers.ModelSerializer):
+class RecipeSectionSerializer(serializers.ModelSerializer):
     recipe = RecipeSerializer()
 
     class Meta:
-        model = FavoriteRecipe
         fields = (
             'id',
             'user',
             'recipe'
         )
+
+
+class FavoriteRecipeSerializer(RecipeSectionSerializer):
+    class Meta:
+        Model = FavoriteRecipe
+
+
+class RecipeShoppingCartSerializer(RecipeSectionSerializer):
+    class Meta:
+        Model = RecipeShoppingCart
+
