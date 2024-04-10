@@ -1,9 +1,19 @@
-import base64
-
-from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
-from rest_framework import serializers, fields, validators, exceptions
-from foodgram.models import Ingredient, Tag, Recipe, User, FavoriteRecipe, RecipeShoppingCart, Follow
+from rest_framework.exceptions import ValidationError
+from rest_framework.fields import CurrentUserDefault
+from rest_framework.serializers import ModelSerializer, SlugRelatedField
+from rest_framework.validators import UniqueTogetherValidator
+
+from foodgram.models import (
+    FavoriteRecipe,
+    Follow,
+    Ingredient,
+    Recipe,
+    RecipeShoppingCart,
+    Tag,
+    User
+)
+from .fields import Base64ImageField
 
 
 class CustomUserSerializer(UserSerializer):
@@ -20,16 +30,7 @@ class CustomUserSerializer(UserSerializer):
         required_fields = fields
 
 
-class Base64ImageField(serializers.ImageField):
-    def to_internal_value(self, data):
-        if isinstance(data, str) and data.startswith('data:image'):
-            format, imgstr = data.split(';base64,')
-            ext = format.split('/')[-1]
-            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
-        return super().to_internal_value(data)
-
-
-class IngredientSerializer(serializers.ModelSerializer):
+class IngredientSerializer(ModelSerializer):
     class Meta:
         model = Ingredient
         fields = (
@@ -40,7 +41,7 @@ class IngredientSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class TagSerializer(serializers.ModelSerializer):
+class TagSerializer(ModelSerializer):
     class Meta:
         model = Tag
         fields = (
@@ -52,12 +53,12 @@ class TagSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class RecipeSerializer(serializers.ModelSerializer):
+class RecipeSerializer(ModelSerializer):
     tags = TagSerializer(
         many=True,
         read_only=True
     )
-    author = serializers.SlugRelatedField(
+    author = SlugRelatedField(
         slug_field='username',
         read_only=True
     )
@@ -81,7 +82,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         )
 
 
-class RecipeSectionSerializer(serializers.ModelSerializer):
+class RecipeSectionSerializer(ModelSerializer):
     recipe = RecipeSerializer()
 
     class Meta:
@@ -102,17 +103,17 @@ class RecipeShoppingCartSerializer(RecipeSectionSerializer):
         Model = RecipeShoppingCart
 
 
-class FollowSerializer(serializers.ModelSerializer):
-    user = serializers.SlugRelatedField(
+class FollowSerializer(ModelSerializer):
+    user = SlugRelatedField(
         slug_field='username',
         queryset=User.objects.all(),
-        default=fields.CurrentUserDefault()
+        default=CurrentUserDefault()
     )
-    following = serializers.SlugRelatedField(
+    following = SlugRelatedField(
         slug_field='username',
         queryset=User.objects.all()
     )
-    validators = validators.UniqueTogetherValidator(
+    validators = UniqueTogetherValidator(
         queryset=Follow.objects.all(),
         fields=('user', 'following'),
         message='Вы уже подписаны на пользователя'
@@ -124,14 +125,14 @@ class FollowSerializer(serializers.ModelSerializer):
 
     def validate(self, following):
         if self.context['request'].user == following['following']:
-            raise exceptions.ValidationError(
+            raise ValidationError(
                 'Нельзя подписаться на себя'
             )
         return following
 
 
-class GETFollowListSerializer(serializers.ModelSerializer):
-    following = serializers.SlugRelatedField(
+class CertainFollowSerializer(ModelSerializer):
+    following = SlugRelatedField(
         slug_field='username',
         queryset=User.objects.all
     )
@@ -149,7 +150,7 @@ class GETFollowListSerializer(serializers.ModelSerializer):
         )
 
 
-class ProfileSerializer(serializers.ModelSerializer):
+class ProfileSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = '__all__'

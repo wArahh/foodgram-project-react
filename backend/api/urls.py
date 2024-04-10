@@ -2,15 +2,15 @@ from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
 from .views import (
-    IngredientViewSet,
-    TagViewSet,
-    RecipeViewSet,
     FavouriteRecipeViewSet,
-    RecipeShoppingCartViewSet,
-    GETShoppingCartText,
     FollowViewSet,
-    GETFollowList,
-    GETProfile,
+    FollowListView,
+    CertainProfileView,
+    ShoppingCartTextListView,
+    IngredientViewSet,
+    RecipeShoppingCartViewSet,
+    RecipeViewSet,
+    TagViewSet
 )
 
 router_v1 = SimpleRouter()
@@ -41,7 +41,7 @@ router_v1.register(
 )
 router_v1.register(
     r'recipes/(?P<recipe_id>\d+)/download_shopping_cart',
-    GETShoppingCartText,
+    ShoppingCartTextListView,
     basename='download_shopping_cart'
 )
 router_v1.register(
@@ -51,12 +51,12 @@ router_v1.register(
 )
 router_v1.register(
     r'users/(?P<user_id>\d+)/subscriptions/',
-    GETFollowList,
+    FollowListView,
     basename='follow_list'
 )
 router_v1.register(
     r'users/(?P<user_id>\d+)',
-    GETProfile,
+    CertainProfileView,
     basename='get_profile'
 )
 

@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.db import models
 
 
 class CustomUserManager(BaseUserManager):
@@ -181,4 +181,3 @@ class RecipeShoppingCart(RecipeSection):
     class Meta:
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-

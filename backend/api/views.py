@@ -1,87 +1,76 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, permissions, mixins, pagination, status, generics
-
-from foodgram.models import (
-    Ingredient,
-    Tag,
-    Recipe,
-    FavoriteRecipe
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
+from rest_framework.status import HTTP_200_OK
+from rest_framework.generics import ListAPIView
+from rest_framework.mixins import (
+    CreateModelMixin,
+    DestroyModelMixin,
+    ListModelMixin,
+    RetrieveModelMixin
+)
+from rest_framework.pagination import (
+    LimitOffsetPagination,
+    PageNumberPagination
+)
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated
 )
 from rest_framework.response import Response
 
-from .serializers import (
-    IngredientSerializer,
-    TagSerializer,
-    RecipeSerializer,
-    FavoriteRecipeSerializer,
-    RecipeShoppingCartSerializer,
-    FollowSerializer,
-    GETFollowListSerializer,
-    ProfileSerializer,
+from foodgram.models import (
+    FavoriteRecipe,
+    Ingredient,
+    Recipe,
+    Tag,
     User
 )
 
-
-class FollowViewSet(
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet
-):
-    serializer_class = FollowSerializer
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def get_queryset(self):
-        return self.request.user.follower.all()
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+from .serializers import (
+    FavoriteRecipeSerializer,
+    FollowSerializer,
+    CertainFollowSerializer,
+    IngredientSerializer,
+    ProfileSerializer,
+    RecipeSerializer,
+    RecipeShoppingCartSerializer,
+    TagSerializer,
+)
 
 
-class GETFollowList(
-    generics.ListAPIView,
-    viewsets.GenericViewSet
-):
-    serializer_class = GETFollowListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
-    pagination_class = pagination.PageNumberPagination
-
-    def get_queryset(self):
-        return self.request.user.follower.all()
-
-
-class GetOnly(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet,
+class GETOnly(
+    ListModelMixin,
+    RetrieveModelMixin,
+    GenericViewSet,
 ):
     pass
 
 
-class IngredientViewSet(GetOnly):
+class IngredientViewSet(GETOnly):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsAuthenticated,)
 
 
-class TagViewSet(GetOnly):
+class TagViewSet(GETOnly):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsAuthenticated,)
 
 
-class RecipeViewSet(viewsets.ModelViewSet):
+class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
-    permission_classes = (permissions.AllowAny,)
-    pagination_class = (pagination.LimitOffsetPagination,)
+    permission_classes = (AllowAny,)
+    pagination_class = (LimitOffsetPagination,)
     http_method_names = ('get', 'post', 'patch', 'delete',)
 
 
-class RecipeSectionViewSet(viewsets.ModelViewSet):
+class RecipeSectionViewSet(ModelViewSet):
     serializer_class = FavoriteRecipe
-    pagination_class = (pagination.LimitOffsetPagination,)
+    pagination_class = (LimitOffsetPagination,)
     http_method_names = ('post', 'delete',)
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsAuthenticated,)
 
     def get_recipe(self):
         return get_object_or_404(
@@ -109,12 +98,12 @@ class RecipeShoppingCartViewSet(RecipeSectionViewSet):
     serializer_class = RecipeShoppingCartSerializer
 
 
-class GETShoppingCartText(
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet
+class ShoppingCartTextListView(
+    ListModelMixin,
+    GenericViewSet
 ):
     serializer_class = RecipeShoppingCartSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsAuthenticated,)
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -122,16 +111,43 @@ class GETShoppingCartText(
             file.write(str(response.data))
         return Response(
             data=response.data,
-            status=status.HTTP_200_OK
+            status=HTTP_200_OK
         )
 
 
-class GETProfile(
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+class FollowViewSet(
+    CreateModelMixin,
+    DestroyModelMixin,
+    GenericViewSet
+):
+    serializer_class = FollowSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return self.request.user.follower.all()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class FollowListView(
+    ListAPIView,
+    GenericViewSet
+):
+    serializer_class = CertainFollowSerializer
+    permission_classes = (IsAuthenticated,)
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        return self.request.user.follower.all()
+
+
+class CertainProfileView(
+    RetrieveModelMixin,
+    GenericViewSet
 ):
     serializer_class = ProfileSerializer
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (AllowAny,)
 
     def get_queryset(self):
         return get_object_or_404(
