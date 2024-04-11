@@ -1,16 +1,13 @@
 from django.shortcuts import get_object_or_404
+from djoser.views import UserViewSet
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.status import HTTP_200_OK
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.mixins import (
     CreateModelMixin,
     DestroyModelMixin,
     ListModelMixin,
     RetrieveModelMixin
-)
-from rest_framework.pagination import (
-    LimitOffsetPagination,
-    PageNumberPagination
 )
 from rest_framework.permissions import (
     AllowAny,
@@ -25,7 +22,6 @@ from foodgram.models import (
     Tag,
     User
 )
-
 from .serializers import (
     FavoriteRecipeSerializer,
     FollowSerializer,
@@ -35,6 +31,7 @@ from .serializers import (
     RecipeSerializer,
     RecipeShoppingCartSerializer,
     TagSerializer,
+    CustomUserSerializer,
 )
 
 
@@ -44,6 +41,10 @@ class GETOnly(
     GenericViewSet,
 ):
     pass
+
+
+class CustomUserViewSet(UserViewSet):
+    serializer_class = CustomUserSerializer
 
 
 class IngredientViewSet(GETOnly):
@@ -62,13 +63,11 @@ class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = (AllowAny,)
-    pagination_class = (LimitOffsetPagination,)
     http_method_names = ('get', 'post', 'patch', 'delete',)
 
 
 class RecipeSectionViewSet(ModelViewSet):
     serializer_class = FavoriteRecipe
-    pagination_class = (LimitOffsetPagination,)
     http_method_names = ('post', 'delete',)
     permission_classes = (IsAuthenticated,)
 
@@ -136,7 +135,6 @@ class FollowListView(
 ):
     serializer_class = CertainFollowSerializer
     permission_classes = (IsAuthenticated,)
-    pagination_class = PageNumberPagination
 
     def get_queryset(self):
         return self.request.user.follower.all()
@@ -148,9 +146,3 @@ class CertainProfileView(
 ):
     serializer_class = ProfileSerializer
     permission_classes = (AllowAny,)
-
-    def get_queryset(self):
-        return get_object_or_404(
-            User,
-            id=self.request.user.id
-        )

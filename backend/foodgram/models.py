@@ -1,5 +1,7 @@
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+
+from .validators import username_validator
 
 
 class CustomUserManager(BaseUserManager):
@@ -16,13 +18,14 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, username, password, **extra_fields)
 
 
-class User(AbstractBaseUser):
+class User(AbstractUser):
     email = models.EmailField(
         unique=True
     )
     username = models.CharField(
         max_length=150,
-        unique=True
+        unique=True,
+        validators=(username_validator,),
     )
     first_name = models.CharField(
         max_length=20
@@ -32,7 +35,11 @@ class User(AbstractBaseUser):
     )
     objects = CustomUserManager()
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ('username',)
+    REQUIRED_FIELDS = (
+        'username',
+        'first_name',
+        'last_name'
+    )
 
     def __str__(self):
         return self.email

@@ -1,8 +1,8 @@
-from djoser.serializers import UserSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
 from rest_framework.serializers import ModelSerializer, SlugRelatedField
 from rest_framework.validators import UniqueTogetherValidator
+from djoser.serializers import UserCreateSerializer, UserSerializer
 
 from foodgram.models import (
     FavoriteRecipe,
@@ -16,18 +16,28 @@ from foodgram.models import (
 from .fields import Base64ImageField
 
 
+class CustomUserCreateSerializer(UserCreateSerializer):
+    class Meta(UserCreateSerializer.Meta):
+        fields = (
+            'email',
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'password'
+        )
+
+
 class CustomUserSerializer(UserSerializer):
     class Meta:
         model = User
         fields = (
-            'id',
             'email',
+            'id',
             'username',
             'first_name',
             'last_name'
-            'password'
         )
-        required_fields = fields
 
 
 class IngredientSerializer(ModelSerializer):

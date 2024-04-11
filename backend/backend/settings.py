@@ -94,15 +94,24 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-    ]
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': None,
 }
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
+    'HIDE_USERS': False,
+    'PERMISSIONS': {
+        'user_list': ['rest_framework.permissions.AllowAny'],
+    },
+    'SERIALIZERS': {
+        'user_create': 'api.serializers.CustomUserCreateSerializer',
+    }
 }
 
 
@@ -126,3 +135,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+USERNAME_PATTERN = r'^[\w.@+-]+\Z'
