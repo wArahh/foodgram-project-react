@@ -14,6 +14,7 @@ from rest_framework.permissions import (
     IsAuthenticated,
 )
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter
 
 from foodgram.models import (
     FavoriteRecipe,
@@ -48,9 +49,17 @@ class CustomUserViewSet(UserViewSet):
 
 
 class IngredientViewSet(GETOnly):
-    queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (AllowAny,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+
+    def get_queryset(self):
+        queryset = Ingredient.objects.all()
+        name_starts_with = self.request.query_params.get('name', None)
+        if name_starts_with:
+            queryset = queryset.filter(name__istartswith=name_starts_with)
+        return queryset
 
 
 class TagViewSet(GETOnly):

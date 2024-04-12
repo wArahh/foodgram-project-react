@@ -48,7 +48,6 @@ class IngredientSerializer(ModelSerializer):
             'name',
             'measurement_unit',
         )
-        read_only_fields = fields
 
 
 class TagSerializer(ModelSerializer):
