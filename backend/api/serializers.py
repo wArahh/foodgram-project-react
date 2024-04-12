@@ -60,7 +60,6 @@ class TagSerializer(ModelSerializer):
             'color',
             'slug',
         )
-        read_only_fields = fields
 
 
 class RecipeSerializer(ModelSerializer):

@@ -2,7 +2,7 @@ from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.status import HTTP_200_OK
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import ListAPIView
 from rest_framework.mixins import (
     CreateModelMixin,
     DestroyModelMixin,
@@ -11,7 +11,7 @@ from rest_framework.mixins import (
 )
 from rest_framework.permissions import (
     AllowAny,
-    IsAuthenticated
+    IsAuthenticated,
 )
 from rest_framework.response import Response
 
@@ -20,7 +20,7 @@ from foodgram.models import (
     Ingredient,
     Recipe,
     Tag,
-    User
+    User,
 )
 from .serializers import (
     FavoriteRecipeSerializer,
@@ -56,7 +56,7 @@ class IngredientViewSet(GETOnly):
 class TagViewSet(GETOnly):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (AllowAny,)
 
 
 class RecipeViewSet(ModelViewSet):
