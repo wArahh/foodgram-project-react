@@ -10,6 +10,7 @@ from .views import (
     RecipeShoppingCartViewSet,
     RecipeViewSet,
     TagViewSet,
+    CustomUserViewSet
 )
 
 router_v1 = SimpleRouter()
@@ -44,6 +45,11 @@ router_v1.register(
     basename='download_shopping_cart'
 )
 router_v1.register(
+    r'users',
+    CustomUserViewSet,
+    basename='users'
+)
+router_v1.register(
     r'users/(?P<user_id>\d+)/subscribe/',
     FollowViewSet,
     basename='follow'
@@ -57,6 +63,5 @@ router_v1.register(
 
 urlpatterns = [
     path('', include(router_v1.urls)),
-    path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken'))
 ]

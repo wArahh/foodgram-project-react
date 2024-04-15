@@ -15,7 +15,6 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
-from rest_framework.pagination import LimitOffsetPagination
 
 from foodgram.models import (
     FavoriteRecipe,
@@ -32,8 +31,16 @@ from .serializers import (
     RecipeSerializer,
     RecipeShoppingCartSerializer,
     TagSerializer,
+    CustomUserSerializer
 )
 from .permissions import IsAuthenticatedOrReadOnly
+from .pagination import PageLimitPagination
+
+
+class CustomUserViewSet(UserViewSet):
+    serializer_class = CustomUserSerializer
+    pagination_class = PageLimitPagination
+    permission_classes = (AllowAny,)
 
 
 class GETOnly(
