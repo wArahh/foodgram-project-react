@@ -1,6 +1,6 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
-from rest_framework.serializers import ModelSerializer, SlugRelatedField
+from rest_framework.serializers import ModelSerializer, SlugRelatedField, SerializerMethodField
 from rest_framework.validators import UniqueTogetherValidator
 from djoser.serializers import UserCreateSerializer, UserSerializer
 
@@ -29,6 +29,15 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
 
 class CustomUserSerializer(UserSerializer):
+    is_subscribed = SerializerMethodField()
+
+    def get_is_subscribed(self, another_user):
+        if self.context['request'].user.is_authenticated:
+            return Follow.objects.filter(
+                user=self.context['request'].user, following=another_user
+            ).exists()
+        return False
+
     class Meta:
         model = User
         fields = (
@@ -36,7 +45,8 @@ class CustomUserSerializer(UserSerializer):
             'id',
             'username',
             'first_name',
-            'last_name'
+            'last_name',
+            'is_subscribed'
         )
 
 
@@ -66,10 +76,7 @@ class RecipeSerializer(ModelSerializer):
         many=True,
         read_only=True
     )
-    author = SlugRelatedField(
-        slug_field='username',
-        read_only=True
-    )
+    author = CustomUserSerializer(read_only=True)
     ingredients = IngredientSerializer(
         many=True,
         read_only=True
@@ -156,10 +163,3 @@ class CertainFollowSerializer(ModelSerializer):
             'following',
             'recipes'
         )
-
-
-class ProfileSerializer(ModelSerializer):
-    class Meta:
-        model = User
-        fields = '__all__'
-        read_only_fields = fields

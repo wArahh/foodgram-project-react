@@ -5,12 +5,11 @@ from .views import (
     FavouriteRecipeViewSet,
     FollowViewSet,
     FollowListView,
-    CertainProfileView,
     ShoppingCartTextListView,
     IngredientViewSet,
     RecipeShoppingCartViewSet,
     RecipeViewSet,
-    TagViewSet
+    TagViewSet,
 )
 
 router_v1 = SimpleRouter()
@@ -53,11 +52,6 @@ router_v1.register(
     r'users/(?P<user_id>\d+)/subscriptions/',
     FollowListView,
     basename='follow_list'
-)
-router_v1.register(
-    r'users/(?P<user_id>\d+)',
-    CertainProfileView,
-    basename='get_profile'
 )
 
 

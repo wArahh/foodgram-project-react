@@ -15,6 +15,7 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
+from rest_framework.pagination import LimitOffsetPagination
 
 from foodgram.models import (
     FavoriteRecipe,
@@ -28,12 +29,11 @@ from .serializers import (
     FollowSerializer,
     CertainFollowSerializer,
     IngredientSerializer,
-    ProfileSerializer,
     RecipeSerializer,
     RecipeShoppingCartSerializer,
     TagSerializer,
-    CustomUserSerializer,
 )
+from .permissions import IsAuthenticatedOrReadOnly
 
 
 class GETOnly(
@@ -42,10 +42,6 @@ class GETOnly(
     GenericViewSet,
 ):
     pass
-
-
-class CustomUserViewSet(UserViewSet):
-    serializer_class = CustomUserSerializer
 
 
 class IngredientViewSet(GETOnly):
@@ -71,8 +67,11 @@ class TagViewSet(GETOnly):
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticatedOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete',)
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
 
 class RecipeSectionViewSet(ModelViewSet):
@@ -147,11 +146,3 @@ class FollowListView(
 
     def get_queryset(self):
         return self.request.user.follower.all()
-
-
-class CertainProfileView(
-    RetrieveModelMixin,
-    GenericViewSet
-):
-    serializer_class = ProfileSerializer
-    permission_classes = (AllowAny,)
