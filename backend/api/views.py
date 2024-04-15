@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
+from rest_framework import viewsets
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.status import HTTP_200_OK
 from rest_framework.generics import ListAPIView
@@ -15,6 +16,7 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from foodgram.models import (
     FavoriteRecipe,
@@ -38,9 +40,14 @@ from .pagination import PageLimitPagination
 
 
 class CustomUserViewSet(UserViewSet):
-    serializer_class = CustomUserSerializer
     pagination_class = PageLimitPagination
-    permission_classes = (AllowAny,)
+
+    def get_permissions(self):
+        if self.request.path.endswith('me/'):
+            return (IsAuthenticated(),)
+        elif self.action in ('retrieve', 'list'):
+            return (AllowAny(),)
+        return super().get_permissions()
 
 
 class GETOnly(
@@ -75,7 +82,11 @@ class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
+    pagination_class = PageLimitPagination
     http_method_names = ('get', 'post', 'patch', 'delete',)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ('author',)
+    lookup_field = 'id'
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)

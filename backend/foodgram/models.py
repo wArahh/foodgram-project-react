@@ -112,11 +112,6 @@ class Tag(models.Model):
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
-        unique_together = (
-            'name',
-            'color',
-            'slug'
-        )
 
 
 class Recipe(models.Model):
@@ -151,9 +146,6 @@ class Recipe(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True
     )
-
-    def __str__(self):
-        return self.name
 
     class Meta:
         verbose_name = 'Рецепт'

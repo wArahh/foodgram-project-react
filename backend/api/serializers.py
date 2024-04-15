@@ -16,27 +16,8 @@ from foodgram.models import (
 from .fields import Base64ImageField
 
 
-class CustomUserCreateSerializer(UserCreateSerializer):
-    class Meta(UserCreateSerializer.Meta):
-        fields = (
-            'email',
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'password'
-        )
-
-
 class CustomUserSerializer(UserSerializer):
     is_subscribed = SerializerMethodField()
-
-    def get_is_subscribed(self, another_user):
-        if self.context['request'].user.is_authenticated:
-            return Follow.objects.filter(
-                user=self.context['request'].user, following=another_user
-            ).exists()
-        return False
 
     class Meta:
         model = User
@@ -48,6 +29,13 @@ class CustomUserSerializer(UserSerializer):
             'last_name',
             'is_subscribed'
         )
+
+    def get_is_subscribed(self, another_user):
+        if self.context['request'].user.is_authenticated:
+            return Follow.objects.filter(
+                user=self.context['request'].user, following=another_user
+            ).exists()
+        return False
 
 
 class IngredientSerializer(ModelSerializer):
@@ -71,17 +59,16 @@ class TagSerializer(ModelSerializer):
         )
 
 
-class RecipeSerializer(ModelSerializer):
+class RecipeSerializer(ModelSerializer): #TODO PrimaryKeyRelatedField(get)/ToRepresentasian
     tags = TagSerializer(
         many=True,
-        read_only=True
     )
     author = CustomUserSerializer(read_only=True)
     ingredients = IngredientSerializer(
         many=True,
-        read_only=True
     )
-    image = Base64ImageField()
+    is_favorited = SerializerMethodField()
+    is_in_shopping_cart = SerializerMethodField()
 
     class Meta:
         model = Recipe
@@ -93,8 +80,26 @@ class RecipeSerializer(ModelSerializer):
             'name',
             'image',
             'text',
-            'cooking_time'
+            'cooking_time',
+            'is_favorited',
+            'is_in_shopping_cart'
         )
+
+    def get_is_favorited(self, favorited_recipe):
+        if self.context['request'].user.is_authenticated:
+            return FavoriteRecipe.objects.filter(
+                user=self.context['request'].user,
+                recipe=favorited_recipe
+                ).exists()
+        return False
+
+    def get_is_in_shopping_cart(self, shopping_cart_object):
+        if self.context['request'].user.is_authenticated:
+            return RecipeShoppingCart.objects.filter(
+                user=self.context['request'].user,
+                recipe=shopping_cart_object
+            ).exists()
+        return False
 
 
 class RecipeSectionSerializer(ModelSerializer):

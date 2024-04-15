@@ -10,7 +10,7 @@ from .views import (
     RecipeShoppingCartViewSet,
     RecipeViewSet,
     TagViewSet,
-    CustomUserViewSet
+    CustomUserViewSet,
 )
 
 router_v1 = SimpleRouter()
