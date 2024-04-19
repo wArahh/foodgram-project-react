@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.conf import settings
 
 from .validators import username_validator
 
@@ -55,21 +57,21 @@ class User(AbstractUser):
 
 
 class Follow(models.Model):
-    user = models.ForeignKey(
+    subscriber = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='follower'
+        related_name='subscribers'
     )
-    following = models.ForeignKey(
+    subscribed_to = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='following',
+        related_name='subscribed_to',
     )
 
     class Meta:
         unique_together = (
-            'user',
-            'following'
+            'subscriber',
+            'subscribed_to'
         )
 
 
@@ -82,9 +84,6 @@ class Ingredient(models.Model):
         max_length=25,
         verbose_name='Единица Измерения'
     )
-
-    def __str__(self):
-        return self.name
 
     class Meta:
         verbose_name = 'Ингридиент'
@@ -151,6 +150,25 @@ class Recipe(models.Model):
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
         ordering = ('-created_at',)
+
+
+class IngredientAmountForRecipe(models.Model):
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='recipe_amount',
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='ingredient_amount',
+    )
+    amount = models.IntegerField(
+        validators=[
+            MinValueValidator(settings.MIN_AMOUNT),
+            MaxValueValidator(settings.MAX_AMOUNT)
+        ],
+    )
 
 
 class RecipeSection(models.Model):

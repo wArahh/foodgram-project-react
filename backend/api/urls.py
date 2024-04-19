@@ -3,8 +3,6 @@ from rest_framework.routers import SimpleRouter
 
 from .views import (
     FavouriteRecipeViewSet,
-    FollowViewSet,
-    FollowListView,
     ShoppingCartTextListView,
     IngredientViewSet,
     RecipeShoppingCartViewSet,
@@ -48,16 +46,6 @@ router_v1.register(
     r'users',
     CustomUserViewSet,
     basename='users'
-)
-router_v1.register(
-    r'users/(?P<user_id>\d+)/subscribe/',
-    FollowViewSet,
-    basename='follow'
-)
-router_v1.register(
-    r'users/(?P<user_id>\d+)/subscriptions/',
-    FollowListView,
-    basename='follow_list'
 )
 
 

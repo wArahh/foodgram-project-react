@@ -137,3 +137,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 USERNAME_PATTERN = r'^[\w.@+-]+\Z'
+
+MIN_AMOUNT = 1
+MAX_AMOUNT = 100

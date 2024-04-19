@@ -1,12 +1,8 @@
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
-from rest_framework import viewsets
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.status import HTTP_200_OK
-from rest_framework.generics import ListAPIView
+from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
 from rest_framework.mixins import (
-    CreateModelMixin,
-    DestroyModelMixin,
     ListModelMixin,
     RetrieveModelMixin
 )
@@ -24,16 +20,14 @@ from foodgram.models import (
     Recipe,
     Tag,
     User,
+    Follow
 )
 from .serializers import (
     FavoriteRecipeSerializer,
-    FollowSerializer,
-    CertainFollowSerializer,
     IngredientSerializer,
     RecipeSerializer,
     RecipeShoppingCartSerializer,
     TagSerializer,
-    CustomUserSerializer
 )
 from .permissions import IsAuthenticatedOrReadOnly
 from .pagination import PageLimitPagination
@@ -80,13 +74,15 @@ class TagViewSet(GETOnly):
 
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
-    serializer_class = RecipeSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = PageLimitPagination
     http_method_names = ('get', 'post', 'patch', 'delete',)
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('author',)
     lookup_field = 'id'
+
+    def get_serializer_class(self):
+        return RecipeSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -138,29 +134,3 @@ class ShoppingCartTextListView(
             data=response.data,
             status=HTTP_200_OK
         )
-
-
-class FollowViewSet(
-    CreateModelMixin,
-    DestroyModelMixin,
-    GenericViewSet
-):
-    serializer_class = FollowSerializer
-    permission_classes = (IsAuthenticated,)
-
-    def get_queryset(self):
-        return self.request.user.follower.all()
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-
-class FollowListView(
-    ListAPIView,
-    GenericViewSet
-):
-    serializer_class = CertainFollowSerializer
-    permission_classes = (IsAuthenticated,)
-
-    def get_queryset(self):
-        return self.request.user.follower.all()
