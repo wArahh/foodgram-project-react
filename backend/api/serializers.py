@@ -1,5 +1,5 @@
-from django.shortcuts import get_object_or_404
-from rest_framework.fields import IntegerField, ListField
+from rest_framework.exceptions import ValidationError
+from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import (
     ModelSerializer,
     SerializerMethodField,
@@ -66,17 +66,18 @@ class TagSerializer(ModelSerializer):
 
 
 class GETIngredientForRecipeSerializer(ModelSerializer):
-    ingredients = IngredientSerializer(
-        read_only=True
-    )
+    id = ReadOnlyField(source='ingredient.id')
+    name = ReadOnlyField(source='ingredient.name')
+    measurement_unit = ReadOnlyField(source='ingredient.measurement_unit')
 
     class Meta:
         model = IngredientAmountForRecipe
         fields = (
-            'ingredients',
+            'id',
+            'name',
+            'measurement_unit',
             'amount'
         )
-        read_only_fields = (fields,)
 
 
 class IngredientForRecipeSerializer(ModelSerializer):
@@ -92,7 +93,9 @@ class IngredientForRecipeSerializer(ModelSerializer):
 
 class GETRecipeSerializer(ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
-    ingredients = GETIngredientForRecipeSerializer(many=True, read_only=True)
+    ingredients = GETIngredientForRecipeSerializer(
+        many=True, source='recipe_amount'
+    )
     author = CustomUserSerializer(read_only=True)
     is_favorited = SerializerMethodField()
     is_in_shopping_cart = SerializerMethodField()
@@ -166,11 +169,30 @@ class RecipeSerializer(ModelSerializer):
             )
         return recipe
 
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.text = validated_data.get('text', instance.text)
+        instance.cooking_time = validated_data.get('cooking_time', instance.cooking_time)
+        instance.image = validated_data.get('image', instance.image)
+        if 'ingredients' in validated_data:
+            instance.ingredients.set(validated_data['ingredients'])
+        if 'tags' in validated_data:
+            instance.tags.set(validated_data['tags'])
+        instance.save()
+        return instance
+
     def to_representation(self, instance):
         return GETRecipeSerializer(
             instance=instance,
             context={'request': self.context.get('request')}
         ).data
+
+    def validate(self, recipe_data):
+        if not recipe_data['recipe_amount']:
+            raise ValidationError('Нельзя передать пустой список ингредиентов')
+        elif not recipe_data['tags']:
+            raise ValidationError('Нельзя передать пустой список тегов')
+        return recipe_data
 
 
 class RecipeSectionSerializer(ModelSerializer):

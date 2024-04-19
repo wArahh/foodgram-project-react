@@ -1,7 +1,8 @@
 from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
+from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED
+from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, HTTP_204_NO_CONTENT
 from rest_framework.mixins import (
     ListModelMixin,
     RetrieveModelMixin
@@ -31,10 +32,12 @@ from .serializers import (
 )
 from .permissions import IsAuthenticatedOrReadOnly
 from .pagination import PageLimitPagination
+from .filters import RecipeFilter
 
 
 class CustomUserViewSet(UserViewSet):
     pagination_class = PageLimitPagination
+    http_method_names = ('get', 'post', 'delete')
 
     def get_permissions(self):
         if self.request.path.endswith('me/'):
@@ -42,6 +45,23 @@ class CustomUserViewSet(UserViewSet):
         elif self.action in ('retrieve', 'list'):
             return (AllowAny(),)
         return super().get_permissions()
+
+    @action(detail=True, methods=['POST', 'DELETE'])
+    def subscribe(self, request, pk=None, *args, **kwargs):
+        if self.request.user.is_authenticated:
+            user = get_object_or_404(User, id=request.user.id)
+            follow_to = get_object_or_404(User, id=self.kwargs['id'])
+            if self.request.method == 'POST':
+                Follow.objects.create(
+                    subscriber=user, subscribed_to=follow_to
+                )
+                return Response(status=HTTP_201_CREATED)
+            elif self.request.method == 'DELETE':
+                Follow.objects.filter(
+                    subscriber=user, subscribed_to=follow_to
+                ).delete()
+                return Response(status=HTTP_204_NO_CONTENT)
+        return Response(status=HTTP_401_UNAUTHORIZED)
 
 
 class GETOnly(
@@ -74,15 +94,13 @@ class TagViewSet(GETOnly):
 
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
+    serializer_class = RecipeSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = PageLimitPagination
     http_method_names = ('get', 'post', 'patch', 'delete',)
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('author',)
+    filterset_class = RecipeFilter
     lookup_field = 'id'
-
-    def get_serializer_class(self):
-        return RecipeSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
