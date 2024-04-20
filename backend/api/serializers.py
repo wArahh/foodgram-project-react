@@ -1,23 +1,34 @@
-from rest_framework.exceptions import ValidationError
+from djoser.serializers import UserSerializer
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import (
     ModelSerializer,
-    SerializerMethodField,
-    PrimaryKeyRelatedField
+    PrimaryKeyRelatedField,
+    SerializerMethodField
 )
-from djoser.serializers import UserSerializer
 
 from foodgram.models import (
-    FavoriteRecipe,
-    Ingredient,
-    Recipe,
-    RecipeShoppingCart,
-    Tag,
     User,
     Follow,
-    IngredientAmountForRecipe
+    Tag,
+    Ingredient,
+    IngredientAmountForRecipe,
+    Recipe,
+    FavoriteRecipe,
+    RecipeShoppingCart
 )
+
 from .fields import Base64ImageField
+
+NO_PERMISSION_TO_CHANGE_RECIPE = 'Вы не имеете права изменять этот рецепт'
+FIELD_INGREDIENTS_MUST_BE_SET = ('Поле "ingredients" '
+                                 'обязательно для обновления рецепта')
+CANNOT_SENT_NULL_INGREDIENT_LIST = 'Нельзя передать пустой список ингредиентов'
+FIELD_TAGS_MUST_BE_SET = "Поле 'tags' обязательно для обновления рецепта"
+CANNOT_SENT_NULL_TAG_LIST = 'Нельзя передать пустой список тегов'
+CANNOT_ADD_REPETITIVE_INGREDIENTS = ('Нельзя добавлять '
+                                     'повторяющиеся ингредиенты')
+CANNOT_ADD_REPETITIVE_TAGS = 'Нельзя добавлять повторяющиеся теги'
 
 
 class CustomUserSerializer(UserSerializer):
@@ -43,17 +54,6 @@ class CustomUserSerializer(UserSerializer):
         return False
 
 
-class IngredientSerializer(ModelSerializer):
-
-    class Meta:
-        model = Ingredient
-        fields = (
-            'id',
-            'name',
-            'measurement_unit',
-        )
-
-
 class TagSerializer(ModelSerializer):
     class Meta:
         model = Tag
@@ -65,10 +65,27 @@ class TagSerializer(ModelSerializer):
         )
 
 
+class IngredientSerializer(ModelSerializer):
+
+    class Meta:
+        model = Ingredient
+        fields = (
+            'id',
+            'name',
+            'measurement_unit',
+        )
+
+
 class GETIngredientForRecipeSerializer(ModelSerializer):
-    id = ReadOnlyField(source='ingredient.id')
-    name = ReadOnlyField(source='ingredient.name')
-    measurement_unit = ReadOnlyField(source='ingredient.measurement_unit')
+    id = ReadOnlyField(
+        source='ingredient.id'
+    )
+    name = ReadOnlyField(
+        source='ingredient.name'
+    )
+    measurement_unit = ReadOnlyField(
+        source='ingredient.measurement_unit'
+    )
 
     class Meta:
         model = IngredientAmountForRecipe
@@ -81,7 +98,9 @@ class GETIngredientForRecipeSerializer(ModelSerializer):
 
 
 class IngredientForRecipeSerializer(ModelSerializer):
-    id = PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+    id = PrimaryKeyRelatedField(
+        queryset=Ingredient.objects.all()
+    )
 
     class Meta:
         model = IngredientAmountForRecipe
@@ -92,11 +111,16 @@ class IngredientForRecipeSerializer(ModelSerializer):
 
 
 class GETRecipeSerializer(ModelSerializer):
-    tags = TagSerializer(many=True, read_only=True)
-    ingredients = GETIngredientForRecipeSerializer(
-        many=True, source='recipe_amount'
+    tags = TagSerializer(
+        many=True, read_only=True
     )
-    author = CustomUserSerializer(read_only=True)
+    ingredients = GETIngredientForRecipeSerializer(
+        many=True,
+        source='recipe_amount'
+    )
+    author = CustomUserSerializer(
+        read_only=True
+    )
     is_favorited = SerializerMethodField()
     is_in_shopping_cart = SerializerMethodField()
 
@@ -169,15 +193,52 @@ class RecipeSerializer(ModelSerializer):
             )
         return recipe
 
+    def validate(self, recipe_data):
+        if 'recipe_amount' not in recipe_data:
+            raise ValidationError(FIELD_INGREDIENTS_MUST_BE_SET)
+        if not recipe_data['recipe_amount']:
+            raise ValidationError(CANNOT_SENT_NULL_INGREDIENT_LIST)
+        if 'tags' not in recipe_data:
+            raise ValidationError(FIELD_TAGS_MUST_BE_SET)
+        elif not recipe_data['tags']:
+            raise ValidationError(CANNOT_SENT_NULL_TAG_LIST)
+        ingredients_id_list = []
+        for ingredient_object in recipe_data['recipe_amount']:
+            ingredient_id = ingredient_object['id']
+            if ingredient_id in ingredients_id_list:
+                raise ValidationError(CANNOT_ADD_REPETITIVE_INGREDIENTS)
+            ingredients_id_list.append(ingredient_id)
+            tags_id_list = []
+            for tag_id in recipe_data['tags']:
+                if tag_id in tags_id_list:
+                    raise ValidationError(CANNOT_ADD_REPETITIVE_TAGS)
+                tags_id_list.append(tag_id)
+        return recipe_data
+
     def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get('cooking_time', instance.cooking_time)
-        instance.image = validated_data.get('image', instance.image)
+        request = self.context['request']
+        if instance and instance.author != request.user:
+            raise PermissionDenied(NO_PERMISSION_TO_CHANGE_RECIPE)
+        instance.name = validated_data.get(
+            'name', instance.name
+        )
+        instance.text = validated_data.get(
+            'text', instance.text
+        )
+        instance.cooking_time = validated_data.get(
+            'cooking_time', instance.cooking_time
+        )
+        instance.image = validated_data.get(
+            'image', instance.image
+        )
         if 'ingredients' in validated_data:
-            instance.ingredients.set(validated_data['ingredients'])
+            instance.ingredients.set(
+                validated_data['ingredients']
+            )
         if 'tags' in validated_data:
-            instance.tags.set(validated_data['tags'])
+            instance.tags.set(
+                validated_data['tags']
+            )
         instance.save()
         return instance
 
@@ -186,31 +247,3 @@ class RecipeSerializer(ModelSerializer):
             instance=instance,
             context={'request': self.context.get('request')}
         ).data
-
-    def validate(self, recipe_data):
-        if not recipe_data['recipe_amount']:
-            raise ValidationError('Нельзя передать пустой список ингредиентов')
-        elif not recipe_data['tags']:
-            raise ValidationError('Нельзя передать пустой список тегов')
-        return recipe_data
-
-
-class RecipeSectionSerializer(ModelSerializer):
-    # recipe = RecipeSerializer()
-
-    class Meta:
-        fields = (
-            'id',
-            'user',
-            'recipe'
-        )
-
-
-class FavoriteRecipeSerializer(RecipeSectionSerializer):
-    class Meta:
-        Model = FavoriteRecipe
-
-
-class RecipeShoppingCartSerializer(RecipeSectionSerializer):
-    class Meta:
-        Model = RecipeShoppingCart

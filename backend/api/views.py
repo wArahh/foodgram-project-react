@@ -1,38 +1,34 @@
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
 from rest_framework.decorators import action
-from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, HTTP_204_NO_CONTENT
-from rest_framework.mixins import (
-    ListModelMixin,
-    RetrieveModelMixin
-)
-from rest_framework.permissions import (
-    AllowAny,
-    IsAuthenticated,
-)
-from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.status import (
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+    HTTP_401_UNAUTHORIZED
+)
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from foodgram.models import (
-    FavoriteRecipe,
+    User,
+    Follow,
+    Tag,
     Ingredient,
     Recipe,
-    Tag,
-    User,
-    Follow
 )
+
+from .filters import RecipeFilter
+from .pagination import PageLimitPagination
+from .permissions import IsAuthenticatedOrReadOnly
 from .serializers import (
-    FavoriteRecipeSerializer,
+    TagSerializer,
     IngredientSerializer,
     RecipeSerializer,
-    RecipeShoppingCartSerializer,
-    TagSerializer,
 )
-from .permissions import IsAuthenticatedOrReadOnly
-from .pagination import PageLimitPagination
-from .filters import RecipeFilter
 
 
 class CustomUserViewSet(UserViewSet):
@@ -72,6 +68,12 @@ class GETOnly(
     pass
 
 
+class TagViewSet(GETOnly):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = (AllowAny,)
+
+
 class IngredientViewSet(GETOnly):
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
@@ -86,12 +88,6 @@ class IngredientViewSet(GETOnly):
         return queryset
 
 
-class TagViewSet(GETOnly):
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-    permission_classes = (AllowAny,)
-
-
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
@@ -104,51 +100,3 @@ class RecipeViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
-
-
-class RecipeSectionViewSet(ModelViewSet):
-    serializer_class = FavoriteRecipe
-    http_method_names = ('post', 'delete',)
-    permission_classes = (IsAuthenticated,)
-
-    def get_recipe(self):
-        return get_object_or_404(
-            Recipe,
-            id=self.kwargs.get('recipe_id')
-        )
-
-    def get_queryset(self):
-        return FavoriteRecipe.objects.filter(
-            recipe=self.get_recipe()
-        )
-
-    def perform_create(self, serializer):
-        serializer.save(
-            author=self.request.user,
-            recipe=self.get_recipe()
-        )
-
-
-class FavouriteRecipeViewSet(RecipeSectionViewSet):
-    serializer_class = FavoriteRecipeSerializer
-
-
-class RecipeShoppingCartViewSet(RecipeSectionViewSet):
-    serializer_class = RecipeShoppingCartSerializer
-
-
-class ShoppingCartTextListView(
-    ListModelMixin,
-    GenericViewSet
-):
-    serializer_class = RecipeShoppingCartSerializer
-    permission_classes = (IsAuthenticated,)
-
-    def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-        with open('shopping_cart.txt', 'w') as file:
-            file.write(str(response.data))
-        return Response(
-            data=response.data,
-            status=HTTP_200_OK
-        )

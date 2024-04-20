@@ -1,7 +1,7 @@
-from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 
 from .validators import username_validator
 
@@ -9,7 +9,7 @@ from .validators import username_validator
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, username, password=None, **extra_fields):
         if not email:
-            raise ValueError('The Email field must be set')
+            raise ValueError('Полe email должно быть заполнено')
         email = self.normalize_email(email)
         user = self.model(email=email, username=username, **extra_fields)
         user.set_password(password)
@@ -68,26 +68,14 @@ class Follow(models.Model):
         related_name='subscribed_to',
     )
 
+    def __str__(self):
+        return f'{self.subscriber} {self.subscribed_to}'
+
     class Meta:
         unique_together = (
             'subscriber',
             'subscribed_to'
         )
-
-
-class Ingredient(models.Model):
-    name = models.CharField(
-        max_length=200,
-        verbose_name='Название ингридиента'
-    )
-    measurement_unit = models.CharField(
-        max_length=25,
-        verbose_name='Единица Измерения'
-    )
-
-    class Meta:
-        verbose_name = 'Ингридиент'
-        verbose_name_plural = 'Ингридиенты'
 
 
 class Tag(models.Model):
@@ -106,11 +94,29 @@ class Tag(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return self.slug
 
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
+
+
+class Ingredient(models.Model):
+    name = models.CharField(
+        max_length=200,
+        verbose_name='Название ингридиента'
+    )
+    measurement_unit = models.CharField(
+        max_length=25,
+        verbose_name='Единица Измерения'
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Ингридиент'
+        verbose_name_plural = 'Ингридиенты'
 
 
 class Recipe(models.Model):
@@ -140,11 +146,18 @@ class Recipe(models.Model):
         related_name='recipes'
     )
     cooking_time = models.IntegerField(
-        verbose_name='Время приготовления'
+        verbose_name='Время приготовления',
+        validators=[
+            MinValueValidator(settings.MIN_COOKING_TIME),
+            MaxValueValidator(settings.MAX_COOKING_TIME)
+        ],
     )
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         verbose_name = 'Рецепт'
