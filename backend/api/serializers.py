@@ -4,7 +4,10 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import (
     ModelSerializer,
     PrimaryKeyRelatedField,
-    SerializerMethodField
+    SerializerMethodField,
+    EmailField,
+    IntegerField,
+    CharField
 )
 
 from foodgram.models import (
@@ -21,13 +24,14 @@ from foodgram.models import (
 from .fields import Base64ImageField
 
 NO_PERMISSION_TO_CHANGE_RECIPE = 'Вы не имеете права изменять этот рецепт'
-FIELD_INGREDIENTS_MUST_BE_SET = ('Поле "ingredients" '
-                                 'обязательно для обновления рецепта')
+FIELD_INGREDIENTS_MUST_BE_SET = (
+    'Поле "ingredients обязательно для обновления рецепта')
 CANNOT_SENT_NULL_INGREDIENT_LIST = 'Нельзя передать пустой список ингредиентов'
 FIELD_TAGS_MUST_BE_SET = "Поле 'tags' обязательно для обновления рецепта"
 CANNOT_SENT_NULL_TAG_LIST = 'Нельзя передать пустой список тегов'
-CANNOT_ADD_REPETITIVE_INGREDIENTS = ('Нельзя добавлять '
-                                     'повторяющиеся ингредиенты')
+CANNOT_ADD_REPETITIVE_INGREDIENTS = (
+    'Нельзя добавлять повторяющиеся ингредиенты'
+)
 CANNOT_ADD_REPETITIVE_TAGS = 'Нельзя добавлять повторяющиеся теги'
 
 
@@ -247,3 +251,41 @@ class RecipeSerializer(ModelSerializer):
             instance=instance,
             context={'request': self.context.get('request')}
         ).data
+
+
+class ShortRecipeForFollowingSerializer(GETRecipeSerializer):
+    class Meta(GETRecipeSerializer.Meta):
+        fields = (
+            'id',
+            'name',
+            'image',
+            'cooking_time',
+        )
+
+
+class FollowSerializer(ModelSerializer):
+    email = EmailField(source='subscribed_to.email', read_only=True)
+    id = IntegerField(source='subscribed_to.id', read_only=True)
+    username = CharField(source='subscribed_to.username', read_only=True)
+    first_name = CharField(source='subscribed_to.first_name', read_only=True)
+    last_name = CharField(source='subscribed_to.last_name', read_only=True)
+    is_subscribed = SerializerMethodField()
+
+    class Meta:
+        model = Follow
+        fields = (
+            'email',
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'is_subscribed',
+        )
+
+    def get_is_subscribed(self, follow_obj):
+        if self.context['request'].user.is_authenticated:
+            return Follow.objects.filter(
+                subscriber=self.context['request'].user,
+                subscribed_to=follow_obj.subscribed_to
+            ).exists()
+        return False

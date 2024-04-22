@@ -7,8 +7,10 @@ from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (
+    HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_204_NO_CONTENT,
+    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED
 )
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
@@ -27,8 +29,13 @@ from .permissions import IsAuthenticatedOrReadOnly
 from .serializers import (
     TagSerializer,
     IngredientSerializer,
+    ShortRecipeForFollowingSerializer,
     RecipeSerializer,
+    FollowSerializer
 )
+
+CANNOT_FOLLOW_TWICE = 'Нельзя подписаться на одного пользователя дважды'
+CANNOT_FOLLOW_YOURSELF = 'Нельзя подписаться на себя'
 
 
 class CustomUserViewSet(UserViewSet):
@@ -43,20 +50,100 @@ class CustomUserViewSet(UserViewSet):
         return super().get_permissions()
 
     @action(detail=True, methods=['POST', 'DELETE'])
-    def subscribe(self, request, pk=None, *args, **kwargs):
+    def subscribe(self, request, *args, **kwargs):
         if self.request.user.is_authenticated:
             user = get_object_or_404(User, id=request.user.id)
             follow_to = get_object_or_404(User, id=self.kwargs['id'])
             if self.request.method == 'POST':
+                if user == follow_to:
+                    return Response(
+                        CANNOT_FOLLOW_YOURSELF, status=HTTP_400_BAD_REQUEST
+                    )
+                elif Follow.objects.filter(
+                        subscriber=user,
+                        subscribed_to=follow_to
+                ).exists():
+                    return Response(
+                        CANNOT_FOLLOW_TWICE, status=HTTP_400_BAD_REQUEST
+                    )
                 Follow.objects.create(
-                    subscriber=user, subscribed_to=follow_to
+                    subscriber=user,
+                    subscribed_to=follow_to
                 )
-                return Response(status=HTTP_201_CREATED)
+                follow_data = FollowSerializer(
+                    Follow.objects.get(
+                        subscriber=user,
+                        subscribed_to=follow_to,
+                    ),
+                    context={'request': request}
+                ).data
+                find_user_recipe = Recipe.objects.filter(author=user)
+                if 'recipes_limit' in request.GET:
+                    find_user_recipe = Recipe.objects.filter(
+                        author=follow_to
+                    )[:int(request.GET['recipes_limit'])]
+                recipe = ShortRecipeForFollowingSerializer(
+                    find_user_recipe,
+                    context={'request': request},
+                    many=True
+                ).data
+                recipes_count = find_user_recipe.count()
+                response_data = {
+                    'email': follow_data['email'],
+                    'id': follow_data['id'],
+                    'username': follow_data['username'],
+                    'first_name': follow_data['first_name'],
+                    'last_name': follow_data['last_name'],
+                    'is_subscribed': follow_data['is_subscribed'],
+                    'recipes': recipe,
+                    'recipes_count': recipes_count,
+                }
+                return Response(
+                    response_data,
+                    status=HTTP_201_CREATED
+                )
             elif self.request.method == 'DELETE':
                 Follow.objects.filter(
                     subscriber=user, subscribed_to=follow_to
                 ).delete()
                 return Response(status=HTTP_204_NO_CONTENT)
+        return Response(status=HTTP_401_UNAUTHORIZED)
+
+    @action(detail=False, methods=['GET'])
+    def subscriptions(self, request):
+        if self.request.user.is_authenticated:
+            follow_data = FollowSerializer(
+                Follow.objects.all(),
+                many=True,
+                context={'request': request}
+            ).data
+            response_data_list = []
+            for user_data in follow_data:
+                user_recipes = Recipe.objects.filter(author=user_data['id'])
+                if 'recipes_limit' in request.GET:
+                    user_recipes = Recipe.objects.filter(
+                        author=user_data['id']
+                    )[:int(request.GET['recipes_limit'])]
+                recipe = ShortRecipeForFollowingSerializer(
+                    user_recipes,
+                    context={'request': request},
+                    many=True
+                ).data
+                response_data = {
+                    'email': user_data['email'],
+                    'id': user_data['id'],
+                    'username': user_data['username'],
+                    'first_name': user_data['first_name'],
+                    'last_name': user_data['last_name'],
+                    'is_subscribed': user_data['is_subscribed'],
+                    'recipes': recipe,
+                    'recipes_count': len(recipe)
+                }
+                response_data_list.append(response_data)
+            return Response(
+                response_data_list,
+                status=HTTP_200_OK
+            )
         return Response(status=HTTP_401_UNAUTHORIZED)
 
 

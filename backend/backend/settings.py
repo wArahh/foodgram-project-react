@@ -97,8 +97,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': None,
 }
 
 DJOSER = {
@@ -142,4 +140,4 @@ MIN_AMOUNT = 1
 MAX_AMOUNT = 100
 MIN_COOKING_TIME = 1
 MAX_COOKING_TIME = 240
-PAGE_LIMIT_PAGINATION_PAGE_SIZE = 6
+PAGE_LIMIT_PAGINATION_PAGE_SIZE = 1

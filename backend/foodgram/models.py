@@ -56,28 +56,6 @@ class User(AbstractUser):
         return self.email
 
 
-class Follow(models.Model):
-    subscriber = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='subscribers'
-    )
-    subscribed_to = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='subscribed_to',
-    )
-
-    def __str__(self):
-        return f'{self.subscriber} {self.subscribed_to}'
-
-    class Meta:
-        unique_together = (
-            'subscriber',
-            'subscribed_to'
-        )
-
-
 class Tag(models.Model):
     name = models.CharField(
         max_length=25,
@@ -174,7 +152,6 @@ class IngredientAmountForRecipe(models.Model):
     ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
-        related_name='ingredient_amount',
     )
     amount = models.IntegerField(
         validators=[
@@ -220,3 +197,25 @@ class RecipeShoppingCart(RecipeSection):
     class Meta:
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
+
+
+class Follow(models.Model):
+    subscriber = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='subscribers'
+    )
+    subscribed_to = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='subscribed_to',
+    )
+
+    def __str__(self):
+        return f'{self.subscriber} {self.subscribed_to}'
+
+    class Meta:
+        unique_together = (
+            'subscriber',
+            'subscribed_to'
+        )
