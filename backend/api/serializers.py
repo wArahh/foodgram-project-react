@@ -253,7 +253,7 @@ class RecipeSerializer(ModelSerializer):
         ).data
 
 
-class ShortRecipeForFollowingSerializer(GETRecipeSerializer):
+class ShortRecipeSerializer(GETRecipeSerializer):
     class Meta(GETRecipeSerializer.Meta):
         fields = (
             'id',

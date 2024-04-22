@@ -21,6 +21,8 @@ from foodgram.models import (
     Tag,
     Ingredient,
     Recipe,
+    FavoriteRecipe,
+    RecipeShoppingCart
 )
 
 from .filters import RecipeFilter
@@ -29,13 +31,15 @@ from .permissions import IsAuthenticatedOrReadOnly
 from .serializers import (
     TagSerializer,
     IngredientSerializer,
-    ShortRecipeForFollowingSerializer,
+    ShortRecipeSerializer,
     RecipeSerializer,
     FollowSerializer
 )
 
 CANNOT_FOLLOW_TWICE = 'Нельзя подписаться на одного пользователя дважды'
 CANNOT_FOLLOW_YOURSELF = 'Нельзя подписаться на себя'
+CANNOT_SHOPPING_CARTED_TWICE = 'Нельзя добавить в список покупок дважды'
+CANNOT_FAVORITED_TWICE = 'Нельзя добавть в избранное дважды'
 
 
 class CustomUserViewSet(UserViewSet):
@@ -52,8 +56,11 @@ class CustomUserViewSet(UserViewSet):
     @action(detail=True, methods=['POST', 'DELETE'])
     def subscribe(self, request, *args, **kwargs):
         if self.request.user.is_authenticated:
-            user = get_object_or_404(User, id=request.user.id)
-            follow_to = get_object_or_404(User, id=self.kwargs['id'])
+            user = self.request.user
+            follow_to = get_object_or_404(
+                User,
+                id=self.kwargs['id']
+            )
             if self.request.method == 'POST':
                 if user == follow_to:
                     return Response(
@@ -65,12 +72,13 @@ class CustomUserViewSet(UserViewSet):
                 ).exists():
                     return Response(
                         CANNOT_FOLLOW_TWICE, status=HTTP_400_BAD_REQUEST
+                        # просит Postman, но по факту бессмысленно с UniqueTogether
                     )
                 Follow.objects.create(
                     subscriber=user,
                     subscribed_to=follow_to
                 )
-                follow_data = FollowSerializer(
+                user_follow_to_data = FollowSerializer(
                     Follow.objects.get(
                         subscriber=user,
                         subscribed_to=follow_to,
@@ -82,19 +90,19 @@ class CustomUserViewSet(UserViewSet):
                     find_user_recipe = Recipe.objects.filter(
                         author=follow_to
                     )[:int(request.GET['recipes_limit'])]
-                recipe = ShortRecipeForFollowingSerializer(
+                recipe = ShortRecipeSerializer(
                     find_user_recipe,
                     context={'request': request},
                     many=True
                 ).data
                 recipes_count = find_user_recipe.count()
                 response_data = {
-                    'email': follow_data['email'],
-                    'id': follow_data['id'],
-                    'username': follow_data['username'],
-                    'first_name': follow_data['first_name'],
-                    'last_name': follow_data['last_name'],
-                    'is_subscribed': follow_data['is_subscribed'],
+                    'email': user_follow_to_data['email'],
+                    'id': user_follow_to_data['id'],
+                    'username': user_follow_to_data['username'],
+                    'first_name': user_follow_to_data['first_name'],
+                    'last_name': user_follow_to_data['last_name'],
+                    'is_subscribed': user_follow_to_data['is_subscribed'],
                     'recipes': recipe,
                     'recipes_count': recipes_count,
                 }
@@ -104,7 +112,8 @@ class CustomUserViewSet(UserViewSet):
                 )
             elif self.request.method == 'DELETE':
                 Follow.objects.filter(
-                    subscriber=user, subscribed_to=follow_to
+                    subscriber=user,
+                    subscribed_to=follow_to
                 ).delete()
                 return Response(status=HTTP_204_NO_CONTENT)
         return Response(status=HTTP_401_UNAUTHORIZED)
@@ -124,7 +133,7 @@ class CustomUserViewSet(UserViewSet):
                     user_recipes = Recipe.objects.filter(
                         author=user_data['id']
                     )[:int(request.GET['recipes_limit'])]
-                recipe = ShortRecipeForFollowingSerializer(
+                recipe = ShortRecipeSerializer(
                     user_recipes,
                     context={'request': request},
                     many=True
@@ -187,3 +196,66 @@ class RecipeViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['POST', 'DELETE'])
+    def shopping_cart(self, request, *args, **kwargs):
+        return self.recipe_section(
+            RecipeShoppingCart,
+            CANNOT_SHOPPING_CARTED_TWICE
+        )
+
+    @action(detail=True, methods=['POST', 'DELETE'])
+    def favorite(self, request, *args, **kwargs):
+        return self.recipe_section(
+            FavoriteRecipe,
+            CANNOT_FAVORITED_TWICE
+        )
+
+    def recipe_section(self, SectionModel, answer_if_twice,):
+        user = self.request.user
+        if self.request.user.is_authenticated:
+            if self.request.method == 'POST':
+                try:
+                    recipe = Recipe.objects.get(
+                        id=self.kwargs['id']
+                        # достаточно get_object_or_404, но Postman требует 400
+                    )
+                except Recipe.DoesNotExist:
+                    return Response(
+                        status=HTTP_400_BAD_REQUEST
+                    )
+                if SectionModel.objects.filter(
+                        user=user,
+                        recipe=recipe
+                ).exists():
+                    return Response(
+                        answer_if_twice,
+                        status=HTTP_400_BAD_REQUEST
+                        # просит Postman, но по факту бессмысленно с UniqueTogether
+                    )
+                SectionModel.objects.create(
+                    user=user,
+                    recipe=recipe
+                )
+                recipe_data = ShortRecipeSerializer(
+                    recipe
+                ).data
+                return Response(
+                    recipe_data,
+                    status=HTTP_201_CREATED
+                )
+            elif self.request.method == 'DELETE':
+                recipe = get_object_or_404(
+                    Recipe,
+                    id=self.kwargs['id']
+                    # тупая конструкция, но при одинаковых неверных данных нужно вызвать разные ответы
+                )
+                try:
+                    SectionModel.objects.get(
+                        user=user,
+                        recipe=recipe
+                    ).delete()
+                except SectionModel.DoesNotExist:
+                    return Response(status=HTTP_400_BAD_REQUEST)
+                return Response(status=HTTP_204_NO_CONTENT)
+        return Response(HTTP_401_UNAUTHORIZED)
