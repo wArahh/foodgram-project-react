@@ -33,7 +33,8 @@ from .serializers import (
     IngredientSerializer,
     ShortRecipeSerializer,
     RecipeSerializer,
-    FollowSerializer
+    FollowSerializer,
+    GETRecipeSerializer
 )
 
 CANNOT_FOLLOW_TWICE = 'Нельзя подписаться на одного пользователя дважды'
@@ -118,23 +119,30 @@ class CustomUserViewSet(UserViewSet):
                 return Response(status=HTTP_204_NO_CONTENT)
         return Response(status=HTTP_401_UNAUTHORIZED)
 
-    @action(detail=False, methods=['GET'])
+    @action(
+        detail=False, methods=['GET'],
+        pagination_class=PageLimitPagination,
+    )
     def subscriptions(self, request):
         if self.request.user.is_authenticated:
             follow_data = FollowSerializer(
-                Follow.objects.all(),
+                Follow.objects.filter(
+                    subscriber_id=self.request.user,
+                ),
                 many=True,
                 context={'request': request}
             ).data
             response_data_list = []
             for user_data in follow_data:
-                user_recipes = Recipe.objects.filter(author=user_data['id'])
+                user_recipes = Recipe.objects.filter(
+                    author=user_data['id']
+                )
                 if 'recipes_limit' in request.GET:
                     user_recipes = Recipe.objects.filter(
                         author=user_data['id']
                     )[:int(request.GET['recipes_limit'])]
                 recipe = ShortRecipeSerializer(
-                    user_recipes,
+                    self.paginate_queryset(user_recipes),
                     context={'request': request},
                     many=True
                 ).data
@@ -149,8 +157,17 @@ class CustomUserViewSet(UserViewSet):
                     'recipes_count': len(recipe)
                 }
                 response_data_list.append(response_data)
+            if 'limit' in request.GET:
+                return Response(
+                    self.get_paginated_response(
+                        response_data_list[:int(request.GET['limit'])]
+                    ).data,
+                    status=HTTP_200_OK
+                )
             return Response(
-                response_data_list,
+                self.get_paginated_response(
+                    response_data_list
+                ).data,
                 status=HTTP_200_OK
             )
         return Response(status=HTTP_401_UNAUTHORIZED)
@@ -196,6 +213,31 @@ class RecipeViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=False, methods=['GET'])
+    def download_shopping_cart(self, request):
+        recipe_shopping_carts = RecipeShoppingCart.objects.filter(
+            user=self.request.user
+        ).select_related('recipe')
+        shopping_cart_ingredients = defaultdict(int)
+        for shopping_cart_data in recipe_shopping_carts:
+            recipe_object = shopping_cart_data.recipe
+            recipe_data = GETRecipeSerializer(
+                recipe_object,
+                context={'request': request}
+            ).data
+            ingredients = recipe_data['ingredients']
+            for ingredient_data in ingredients:
+                ingredient_name = ingredient_data['name']
+                shopping_cart_ingredients[ingredient_name] += 1
+        shopping_cart_list = []
+        for ingredient_name, count in shopping_cart_ingredients.items():
+            if count > 1:
+                shopping_cart_list.append(f"{count} {ingredient_name}")
+            else:
+                shopping_cart_list.append(ingredient_name)
+        shopping_cart_text = ', '.join(shopping_cart_list)
+        return Response(shopping_cart_text, content_type='text/plain', status=HTTP_200_OK)
 
     @action(detail=True, methods=['POST', 'DELETE'])
     def shopping_cart(self, request, *args, **kwargs):
