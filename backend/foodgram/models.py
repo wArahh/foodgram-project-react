@@ -180,10 +180,6 @@ class RecipeSection(models.Model):
         return self.recipe.name
 
     class Meta:
-        unique_together = (
-            'user',
-            'recipe'
-        )
         ordering = ('-added_at',)
 
 
@@ -191,12 +187,14 @@ class FavoriteRecipe(RecipeSection):
     class Meta:
         verbose_name = 'Любимый рецепт'
         verbose_name_plural = 'Любимые рецепты'
+        default_related_name = 'favorited'
 
 
 class RecipeShoppingCart(RecipeSection):
     class Meta:
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
+        default_related_name = 'shopping_carted'
 
 
 class Follow(models.Model):
