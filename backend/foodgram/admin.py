@@ -3,10 +3,6 @@ from .models import (
     Tag,
     Ingredient,
     Recipe,
-    IngredientAmountForRecipe,
-    RecipeSection,
-    FavoriteRecipe,
-    RecipeShoppingCart,
     Follow
 )
 
