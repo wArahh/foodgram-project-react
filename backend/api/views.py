@@ -1,4 +1,6 @@
 from collections import defaultdict
+
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
@@ -12,30 +14,31 @@ from rest_framework.status import (
     HTTP_201_CREATED,
     HTTP_204_NO_CONTENT,
     HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN
 )
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from foodgram.models import (
-    User,
+    FavoriteRecipe,
     Follow,
-    Tag,
     Ingredient,
     Recipe,
-    FavoriteRecipe,
-    RecipeShoppingCart
+    RecipeShoppingCart,
+    Tag,
+    User
 )
 
 from .filters import RecipeFilter
 from .pagination import PageLimitPagination
 from .permissions import IsAuthenticatedOrReadOnly
 from .serializers import (
-    TagSerializer,
-    IngredientSerializer,
-    ShortRecipeSerializer,
-    RecipeSerializer,
     FollowSerializer,
-    GETRecipeSerializer
+    GETRecipeSerializer,
+    IngredientSerializer,
+    RecipeSerializer,
+    ShortRecipeSerializer,
+    TagSerializer
 )
 
 CANNOT_FOLLOW_TWICE = 'Нельзя подписаться на одного пользователя дважды'
@@ -66,15 +69,18 @@ class CustomUserViewSet(UserViewSet):
             if self.request.method == 'POST':
                 if user == follow_to:
                     return Response(
-                        CANNOT_FOLLOW_YOURSELF, status=HTTP_400_BAD_REQUEST
+                        CANNOT_FOLLOW_YOURSELF,
+                        status=HTTP_400_BAD_REQUEST
                     )
                 elif Follow.objects.filter(
                         subscriber=user,
                         subscribed_to=follow_to
                 ).exists():
                     return Response(
-                        CANNOT_FOLLOW_TWICE, status=HTTP_400_BAD_REQUEST
-                        # просит Postman, но по факту бессмысленно с UniqueTogether
+                        CANNOT_FOLLOW_TWICE,
+                        status=HTTP_400_BAD_REQUEST
+                        # просит Postman,
+                        # но по факту бессмысленно с UniqueTogether
                     )
                 Follow.objects.create(
                     subscriber=user,
@@ -87,7 +93,9 @@ class CustomUserViewSet(UserViewSet):
                     ),
                     context={'request': request}
                 ).data
-                find_user_recipe = Recipe.objects.filter(author=user)
+                find_user_recipe = Recipe.objects.filter(
+                    author=user
+                )
                 if 'recipes_limit' in request.GET:
                     find_user_recipe = Recipe.objects.filter(
                         author=follow_to
@@ -113,11 +121,14 @@ class CustomUserViewSet(UserViewSet):
                     status=HTTP_201_CREATED
                 )
             elif self.request.method == 'DELETE':
-                Follow.objects.filter(
+                request_follow = Follow.objects.filter(
                     subscriber=user,
                     subscribed_to=follow_to
-                ).delete()
-                return Response(status=HTTP_204_NO_CONTENT)
+                )
+                if request_follow.exists():
+                    request_follow.delete()
+                    return Response(status=HTTP_204_NO_CONTENT)
+                return Response(status=HTTP_400_BAD_REQUEST)
         return Response(status=HTTP_401_UNAUTHORIZED)
 
     @action(
@@ -196,7 +207,10 @@ class IngredientViewSet(GETOnly):
 
     def get_queryset(self):
         queryset = Ingredient.objects.all()
-        name_starts_with = self.request.query_params.get('name', None)
+        name_starts_with = self.request.query_params.get(
+            'name',
+            None
+        )
         if name_starts_with:
             queryset = queryset.filter(name__istartswith=name_starts_with)
         return queryset
@@ -214,6 +228,20 @@ class RecipeViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            recipe = Recipe.objects.select_related(
+                'author'
+            ).get(
+                id=kwargs['id']
+            )
+        except Recipe.DoesNotExist:
+            raise Http404
+        if self.request.user != recipe.author:
+            return Response(status=HTTP_403_FORBIDDEN)
+        recipe.delete()
+        return Response(status=HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['GET'])
     def download_shopping_cart(self, request):
@@ -234,11 +262,15 @@ class RecipeViewSet(ModelViewSet):
         shopping_cart_list = []
         for ingredient_name, count in shopping_cart_ingredients.items():
             if count > 1:
-                shopping_cart_list.append(f"{count} {ingredient_name}")
+                shopping_cart_list.append(f'{count} {ingredient_name}')
             else:
                 shopping_cart_list.append(ingredient_name)
         shopping_cart_text = ', '.join(shopping_cart_list)
-        return Response(shopping_cart_text, content_type='text/plain', status=HTTP_200_OK)
+        return Response(
+            shopping_cart_text,
+            content_type='text/plain',
+            status=HTTP_200_OK
+        )
 
     @action(detail=True, methods=['POST', 'DELETE'])
     def shopping_cart(self, request, *args, **kwargs):
@@ -274,7 +306,8 @@ class RecipeViewSet(ModelViewSet):
                     return Response(
                         answer_if_twice,
                         status=HTTP_400_BAD_REQUEST
-                        # просит Postman, но по факту бессмысленно с UniqueTogether
+                        # просит Postman,
+                        # но по факту бессмысленно с UniqueTogether
                     )
                 SectionModel.objects.create(
                     user=user,
@@ -291,7 +324,9 @@ class RecipeViewSet(ModelViewSet):
                 recipe = get_object_or_404(
                     Recipe,
                     id=self.kwargs['id']
-                    # тупая конструкция, но при одинаковых неверных данных нужно вызвать разные ответы
+                    # тупая конструкция,
+                    # но при одинаковых неверных
+                    # данных нужно вызвать разные ответы
                 )
                 try:
                     SectionModel.objects.get(

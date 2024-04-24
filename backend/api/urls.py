@@ -3,9 +3,9 @@ from rest_framework.routers import SimpleRouter
 
 from .views import (
     CustomUserViewSet,
-    TagViewSet,
     IngredientViewSet,
-    RecipeViewSet
+    RecipeViewSet,
+    TagViewSet
 )
 
 router_v1 = SimpleRouter()

@@ -2,23 +2,23 @@ from djoser.serializers import UserSerializer
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import (
-    ModelSerializer,
-    PrimaryKeyRelatedField,
-    SerializerMethodField,
+    CharField,
     EmailField,
     IntegerField,
-    CharField
+    ModelSerializer,
+    PrimaryKeyRelatedField,
+    SerializerMethodField
 )
 
 from foodgram.models import (
-    User,
+    FavoriteRecipe,
     Follow,
-    Tag,
     Ingredient,
     IngredientAmountForRecipe,
     Recipe,
-    FavoriteRecipe,
-    RecipeShoppingCart
+    RecipeShoppingCart,
+    Tag,
+    User
 )
 
 from .fields import Base64ImageField
@@ -70,7 +70,6 @@ class TagSerializer(ModelSerializer):
 
 
 class IngredientSerializer(ModelSerializer):
-
     class Meta:
         model = Ingredient
         fields = (
@@ -116,7 +115,8 @@ class IngredientForRecipeSerializer(ModelSerializer):
 
 class GETRecipeSerializer(ModelSerializer):
     tags = TagSerializer(
-        many=True, read_only=True
+        many=True,
+        read_only=True
     )
     ingredients = GETIngredientForRecipeSerializer(
         many=True,
@@ -264,11 +264,26 @@ class ShortRecipeSerializer(GETRecipeSerializer):
 
 
 class FollowSerializer(ModelSerializer):
-    email = EmailField(source='subscribed_to.email', read_only=True)
-    id = IntegerField(source='subscribed_to.id', read_only=True)
-    username = CharField(source='subscribed_to.username', read_only=True)
-    first_name = CharField(source='subscribed_to.first_name', read_only=True)
-    last_name = CharField(source='subscribed_to.last_name', read_only=True)
+    email = EmailField(
+        source='subscribed_to.email',
+        read_only=True
+    )
+    id = IntegerField(
+        source='subscribed_to.id',
+        read_only=True
+    )
+    username = CharField(
+        source='subscribed_to.username',
+        read_only=True
+    )
+    first_name = CharField(
+        source='subscribed_to.first_name',
+        read_only=True
+    )
+    last_name = CharField(
+        source='subscribed_to.last_name',
+        read_only=True
+    )
     is_subscribed = SerializerMethodField()
 
     class Meta:
