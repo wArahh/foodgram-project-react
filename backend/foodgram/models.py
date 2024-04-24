@@ -213,6 +213,8 @@ class Follow(models.Model):
         return f'{self.subscriber} {self.subscribed_to}'
 
     class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
         unique_together = (
             'subscriber',
             'subscribed_to'
