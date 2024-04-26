@@ -104,10 +104,6 @@ class Ingredient(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
-        verbose_name = 'Ингридиент'
-        verbose_name_plural = 'Ингридиенты'
-
 
 class Recipe(models.Model):
     author = models.ForeignKey(
