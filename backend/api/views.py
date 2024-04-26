@@ -1,13 +1,10 @@
-from collections import defaultdict
-from django.db.models import Count, Sum
-from django.http import Http404, HttpResponse
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
-from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
@@ -15,11 +12,9 @@ from rest_framework.status import (
     HTTP_204_NO_CONTENT,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
-    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND
 )
 from rest_framework.viewsets import (
-    GenericViewSet,
     ModelViewSet,
     ReadOnlyModelViewSet
 )
@@ -39,7 +34,6 @@ from .pagination import PageLimitPagination
 from .permissions import IsOwnerOrReadOnly
 from .serializers import (
     FollowSerializer,
-    GETRecipeSerializer,
     IngredientSerializer,
     RecipeSerializer,
     ShortRecipeSerializer,
@@ -155,12 +149,20 @@ class RecipeViewSet(ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def download_shopping_cart(self, request):
-        ingredient_list = IngredientAmountForRecipe(
+        ingredient_list = IngredientAmountForRecipe.objects.filter(
             recipe__shopping_carted__user=request.user
-        )
-        print(ingredient_list)
+        ).values(
+            'ingredient__name', 'ingredient__measurement_unit'
+        ).annotate(amount=Sum('amount'))
+        ingredient_response = []
+        for ingredient in ingredient_list:
+            amount = ingredient['amount']
+            measurement_unit = ingredient['ingredient__measurement_unit']
+            name = ingredient['ingredient__name']
+            ingredient_response.append(f'{amount} {measurement_unit} {name}')
+
         return Response(
-            shopping_cart_text,
+            ingredient_response,
             content_type='text/plain',
             status=HTTP_200_OK
         )
@@ -197,9 +199,9 @@ class RecipeViewSet(ModelViewSet):
                 status=HTTP_404_NOT_FOUND
             )
         get_section = SectionModel.objects.filter(
-                    user=user,
-                    recipe=recipe
-            )
+            user=user,
+            recipe=recipe
+        )
         if self.request.method == 'POST':
             if get_section.exists():
                 return Response(
