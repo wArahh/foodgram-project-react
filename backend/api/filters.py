@@ -1,6 +1,4 @@
 import django_filters
-from django_filters.filters import ModelMultipleChoiceFilter
-from django_filters.rest_framework.filters import BooleanFilter
 
 from foodgram.models import (
     FavoriteRecipe,
@@ -11,34 +9,30 @@ from foodgram.models import (
 
 
 class RecipeFilter(django_filters.FilterSet):
-    tags = ModelMultipleChoiceFilter(
+    tags = django_filters.ModelMultipleChoiceFilter(
         queryset=Tag.objects.all(),
         field_name='tags__slug',
         to_field_name='slug',
     )
-    is_in_shopping_cart = BooleanFilter(
+    is_in_shopping_cart = django_filters.BooleanFilter(
         method='filter_is_in_shopping_cart'
     )
-    is_favorited = BooleanFilter(
+    is_favorited = django_filters.BooleanFilter(
         method='filter_is_favorited'
     )
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
         if value:
-            shopping_carted = RecipeShoppingCart.objects.select_related(
-                'recipe'
-            ).values_list(
+            in_shopping_cart = RecipeShoppingCart.objects.values_list(
                 'recipe_id',
                 flat=True
             )
-            queryset = queryset.filter(id__in=shopping_carted)
+            queryset = queryset.filter(id__in=in_shopping_cart)
         return queryset
 
     def filter_is_favorited(self, queryset, name, value):
         if value:
-            favorited = FavoriteRecipe.objects.select_related(
-                'recipe'
-            ).values_list(
+            favorited = FavoriteRecipe.objects.values_list(
                 'recipe_id',
                 flat=True
             )

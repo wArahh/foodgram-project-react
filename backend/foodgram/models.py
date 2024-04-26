@@ -22,27 +22,31 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, username, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        if extra_fields.get('is_staff') is not True:
+        if not extra_fields.get('is_staff'):
             raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
+        if not extra_fields.get('is_superuser'):
             raise ValueError('Superuser must have is_superuser=True.')
         return self.create_user(email, username, password, **extra_fields)
 
 
 class User(AbstractUser):
     email = models.EmailField(
-        unique=True
+        unique=True,
+        verbose_name='Емейл'
     )
     username = models.CharField(
         max_length=150,
         unique=True,
         validators=(username_validator,),
+        verbose_name='Ник'
     )
     first_name = models.CharField(
-        max_length=20
+        max_length=20,
+        verbose_name='Имя'
     )
     last_name = models.CharField(
-        max_length=20
+        max_length=20,
+        verbose_name='Фамилия'
     )
     objects = CustomUserManager()
     USERNAME_FIELD = 'email'
@@ -51,6 +55,10 @@ class User(AbstractUser):
         'first_name',
         'last_name'
     )
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def __str__(self):
         return self.email
@@ -71,23 +79,27 @@ class Tag(models.Model):
         verbose_name='Слаг'
     )
 
-    def __str__(self):
-        return self.slug
-
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
+
+    def __str__(self):
+        return self.slug
 
 
 class Ingredient(models.Model):
     name = models.CharField(
         max_length=200,
-        verbose_name='Название ингридиента'
+        verbose_name='Название ингредиента'
     )
     measurement_unit = models.CharField(
         max_length=25,
         verbose_name='Единица Измерения'
     )
+
+    class Meta:
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиенты'
 
     def __str__(self):
         return self.name
@@ -117,10 +129,12 @@ class Recipe(models.Model):
     )
     ingredients = models.ManyToManyField(
         'Ingredient',
-        related_name='recipes',
+        verbose_name='Ингредиенты',
+        related_name='recipes'
     )
     tags = models.ManyToManyField(
         'Tag',
+        verbose_name='Теги',
         related_name='recipes'
     )
     cooking_time = models.IntegerField(
@@ -134,13 +148,13 @@ class Recipe(models.Model):
         auto_now_add=True
     )
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
         ordering = ('-created_at',)
+
+    def __str__(self):
+        return self.name
 
 
 class IngredientAmountForRecipe(models.Model):
@@ -173,25 +187,33 @@ class RecipeSection(models.Model):
         verbose_name='Рецепт'
     )
     added_at = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
+        verbose_name='Добавлено'
     )
+
+    class Meta:
+        abstract = True
+        ordering = ('-added_at',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'recipe'),
+                name='unique_%(class)s'
+            )
+        ]
 
     def __str__(self):
         return self.recipe.name
 
-    class Meta:
-        ordering = ('-added_at',)
-
 
 class FavoriteRecipe(RecipeSection):
-    class Meta:
+    class Meta(RecipeSection.Meta):
         verbose_name = 'Любимый рецепт'
         verbose_name_plural = 'Любимые рецепты'
         default_related_name = 'favorited'
 
 
 class RecipeShoppingCart(RecipeSection):
-    class Meta:
+    class Meta(RecipeSection.Meta):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
         default_related_name = 'shopping_carted'
@@ -201,11 +223,13 @@ class Follow(models.Model):
     subscriber = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        verbose_name='Подписчик',
         related_name='subscribers'
     )
     subscribed_to = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        verbose_name='Подписаться на',
         related_name='subscribed_to',
     )
 
@@ -215,7 +239,9 @@ class Follow(models.Model):
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        unique_together = (
-            'subscriber',
-            'subscribed_to'
-        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=('subscriber', 'subscribed_to'),
+                name='unique_subscription'
+            )
+        ]
