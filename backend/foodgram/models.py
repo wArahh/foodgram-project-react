@@ -192,11 +192,12 @@ class RecipeSection(models.Model):
     )
 
     class Meta:
+        abstract = True
         ordering = ('-added_at',)
         constraints = [
             models.UniqueConstraint(
                 fields=('user', 'recipe'),
-                name='unique_user_recipe'
+                name='unique_%(class)s'
             )
         ]
 
