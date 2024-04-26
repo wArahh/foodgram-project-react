@@ -188,13 +188,14 @@ class RecipeSerializer(ModelSerializer):
         ingredients = validated_data.pop('recipe_amount')
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
-        for ingredient in ingredients:
-            ingredient_object = ingredient['id']
-            IngredientAmountForRecipe.objects.create(
+        IngredientAmountForRecipe.objects.bulk_create(
+            IngredientAmountForRecipe(
                 recipe=recipe,
-                ingredient=ingredient_object,
+                ingredient=ingredient['id'],
                 amount=ingredient['amount']
             )
+            for ingredient in ingredients
+        )
         return recipe
 
     def validate(self, recipe_data):
@@ -207,16 +208,16 @@ class RecipeSerializer(ModelSerializer):
         elif not recipe_data['tags']:
             raise ValidationError(CANNOT_SENT_NULL_TAG_LIST)
         ingredients_id_list = []
+        tags_id_list = []
         for ingredient_object in recipe_data['recipe_amount']:
             ingredient_id = ingredient_object['id']
             if ingredient_id in ingredients_id_list:
                 raise ValidationError(CANNOT_ADD_REPETITIVE_INGREDIENTS)
             ingredients_id_list.append(ingredient_id)
-            tags_id_list = []
-            for tag_id in recipe_data['tags']:
-                if tag_id in tags_id_list:
-                    raise ValidationError(CANNOT_ADD_REPETITIVE_TAGS)
-                tags_id_list.append(tag_id)
+        for tag_id in recipe_data['tags']:
+            if tag_id in tags_id_list:
+                raise ValidationError(CANNOT_ADD_REPETITIVE_TAGS)
+            tags_id_list.append(tag_id)
         return recipe_data
 
     def update(self, instance, validated_data):
@@ -285,6 +286,8 @@ class FollowSerializer(ModelSerializer):
         read_only=True
     )
     is_subscribed = SerializerMethodField()
+    recipes = SerializerMethodField()
+    recipes_count = SerializerMethodField()
 
     class Meta:
         model = Follow
@@ -295,6 +298,8 @@ class FollowSerializer(ModelSerializer):
             'first_name',
             'last_name',
             'is_subscribed',
+            'recipes',
+            'recipes_count',
         )
 
     def get_is_subscribed(self, follow_obj):
@@ -304,3 +309,20 @@ class FollowSerializer(ModelSerializer):
                 subscribed_to=follow_obj.subscribed_to
             ).exists()
         return False
+
+    def get_recipes(self, follow_object):
+        request = self.context.get('request')
+        recipes = Recipe.objects.filter(
+            author=follow_object.subscribed_to
+        )
+        if 'recipes_limit' in request.GET:
+            recipes = recipes[:int(request.GET['recipes_limit'])]
+        return ShortRecipeSerializer(
+            recipes,
+            many=True
+        ).data
+
+    def get_recipes_count(self, follow_object):
+        return Recipe.objects.filter(
+            author=follow_object.subscribed_to
+        ).count()
