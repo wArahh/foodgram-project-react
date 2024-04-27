@@ -1,5 +1,5 @@
 from djoser.serializers import UserSerializer
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import (
     CharField,
@@ -20,10 +20,9 @@ from foodgram.models import (
     Tag,
     User
 )
-
 from .fields import Base64ImageField
+from .mixins import IsSubscriberMixin
 
-NO_PERMISSION_TO_CHANGE_RECIPE = 'Вы не имеете права изменять этот рецепт'
 FIELD_INGREDIENTS_MUST_BE_SET = (
     'Поле "ingredients обязательно для обновления рецепта')
 CANNOT_SENT_NULL_INGREDIENT_LIST = 'Нельзя передать пустой список ингредиентов'
@@ -35,7 +34,7 @@ CANNOT_ADD_REPETITIVE_INGREDIENTS = (
 CANNOT_ADD_REPETITIVE_TAGS = 'Нельзя добавлять повторяющиеся теги'
 
 
-class CustomUserSerializer(UserSerializer):
+class CustomUserSerializer(UserSerializer, IsSubscriberMixin):
     is_subscribed = SerializerMethodField()
 
     class Meta:
@@ -50,12 +49,7 @@ class CustomUserSerializer(UserSerializer):
         )
 
     def get_is_subscribed(self, subscribed_to):
-        if self.context['request'].user.is_authenticated:
-            return Follow.objects.filter(
-                subscriber=self.context['request'].user,
-                subscribed_to=subscribed_to
-            ).exists()
-        return False
+        return IsSubscriberMixin.get_is_subscribed(self, subscribed_to)
 
 
 class TagSerializer(ModelSerializer):
@@ -221,31 +215,24 @@ class RecipeSerializer(ModelSerializer):
         return recipe_data
 
     def update(self, instance, validated_data):
-        request = self.context['request']
-        if instance and instance.author != request.user:
-            raise PermissionDenied(NO_PERMISSION_TO_CHANGE_RECIPE)
-        instance.name = validated_data.get(
-            'name', instance.name
-        )
-        instance.text = validated_data.get(
-            'text', instance.text
-        )
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time
-        )
-        instance.image = validated_data.get(
-            'image', instance.image
-        )
-        if 'ingredients' in validated_data:
-            instance.ingredients.set(
-                validated_data['ingredients']
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('recipe_amount')
+        recipe = Recipe.objects.get(id=instance.id)
+        ingredient_ids = [ingredient['id'] for ingredient in ingredients]
+        IngredientAmountForRecipe.objects.filter(
+            recipe=recipe,
+            ingredient_id__in=ingredient_ids
+        ).delete()
+        IngredientAmountForRecipe.objects.bulk_create(
+            IngredientAmountForRecipe(
+                recipe=recipe,
+                ingredient_id=ingredient['id'].id,
+                amount=ingredient['amount']
             )
-        if 'tags' in validated_data:
-            instance.tags.set(
-                validated_data['tags']
-            )
-        instance.save()
-        return instance
+            for ingredient in ingredients
+        )
+        instance.tags.set(tags)
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         return GETRecipeSerializer(
@@ -264,7 +251,7 @@ class ShortRecipeSerializer(GETRecipeSerializer):
         )
 
 
-class FollowSerializer(ModelSerializer):
+class FollowSerializer(ModelSerializer, IsSubscriberMixin):
     email = EmailField(
         source='subscribed_to.email',
         read_only=True
@@ -303,12 +290,9 @@ class FollowSerializer(ModelSerializer):
         )
 
     def get_is_subscribed(self, follow_obj):
-        if self.context['request'].user.is_authenticated:
-            return Follow.objects.filter(
-                subscriber=self.context['request'].user,
-                subscribed_to=follow_obj.subscribed_to
-            ).exists()
-        return False
+        return IsSubscriberMixin.get_is_subscribed(
+            self, follow_obj.subscribed_to
+        )
 
     def get_recipes(self, follow_object):
         request = self.context.get('request')
