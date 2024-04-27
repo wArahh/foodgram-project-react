@@ -6,39 +6,20 @@ from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_204_NO_CONTENT,
-    HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
-    HTTP_404_NOT_FOUND
-)
-from rest_framework.viewsets import (
-    ModelViewSet,
-    ReadOnlyModelViewSet
-)
+from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
+                                   HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST,
+                                   HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND)
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from foodgram.models import (
-    FavoriteRecipe,
-    Follow,
-    Ingredient,
-    Recipe,
-    RecipeShoppingCart,
-    Tag,
-    User,
-    IngredientAmountForRecipe
-)
+from foodgram.models import (FavoriteRecipe, Follow, Ingredient,
+                             IngredientAmountForRecipe, Recipe,
+                             RecipeShoppingCart, Tag, User)
 from .filters import RecipeFilter
 from .pagination import PageLimitPagination
 from .permissions import IsOwnerOrReadOnly
-from .serializers import (
-    FollowSerializer,
-    IngredientSerializer,
-    RecipeSerializer,
-    ShortRecipeSerializer,
-    TagSerializer
-)
+from .serializers import (FollowSerializer, IngredientSerializer,
+                          RecipeSerializer, ShortRecipeSerializer,
+                          TagSerializer)
 
 CANNOT_FOLLOW_TWICE = 'Нельзя подписаться на одного пользователя дважды'
 CANNOT_FOLLOW_YOURSELF = 'Нельзя подписаться на себя'
@@ -153,13 +134,13 @@ class RecipeViewSet(ModelViewSet):
             recipe__shopping_carted__user=request.user
         ).values(
             'ingredient__name', 'ingredient__measurement_unit'
-        ).annotate(amount=Sum('amount'))
+        ).annotate(quantity=Sum('amount'))
         ingredient_response = []
         for ingredient in ingredient_list:
-            amount = ingredient['amount']
+            quantity = ingredient['quantity']
             measurement_unit = ingredient['ingredient__measurement_unit']
             name = ingredient['ingredient__name']
-            ingredient_response.append(f'{amount} {measurement_unit} {name}')
+            ingredient_response.append(f'{quantity} {measurement_unit} {name}')
 
         return Response(
             ingredient_response,

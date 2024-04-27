@@ -170,6 +170,14 @@ class IngredientAmountForRecipe(models.Model):
         ],
     )
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('recipe', 'ingredient'),
+                name='unique_ingredient_in_recipe'
+            )
+        ]
+
 
 class RecipeSection(models.Model):
     user = models.ForeignKey(
@@ -229,9 +237,6 @@ class Follow(models.Model):
         related_name='subscribed_to',
     )
 
-    def __str__(self):
-        return f'{self.subscriber} {self.subscribed_to}'
-
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
@@ -241,3 +246,6 @@ class Follow(models.Model):
                 name='unique_subscription'
             )
         ]
+
+    def __str__(self):
+        return f'{self.subscriber} {self.subscribed_to}'

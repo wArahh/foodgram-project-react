@@ -1,25 +1,14 @@
 from djoser.serializers import UserSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import ReadOnlyField
-from rest_framework.serializers import (
-    CharField,
-    EmailField,
-    IntegerField,
-    ModelSerializer,
-    PrimaryKeyRelatedField,
-    SerializerMethodField
-)
+from rest_framework.serializers import (CharField, EmailField, IntegerField,
+                                        ModelSerializer,
+                                        PrimaryKeyRelatedField,
+                                        SerializerMethodField)
 
-from foodgram.models import (
-    FavoriteRecipe,
-    Follow,
-    Ingredient,
-    IngredientAmountForRecipe,
-    Recipe,
-    RecipeShoppingCart,
-    Tag,
-    User
-)
+from foodgram.models import (FavoriteRecipe, Follow, Ingredient,
+                             IngredientAmountForRecipe, Recipe,
+                             RecipeShoppingCart, Tag, User)
 from .fields import Base64ImageField
 from .mixins import IsSubscriberMixin
 
@@ -49,7 +38,7 @@ class CustomUserSerializer(UserSerializer, IsSubscriberMixin):
         )
 
     def get_is_subscribed(self, subscribed_to):
-        return IsSubscriberMixin.get_is_subscribed(self, subscribed_to)
+        return self.is_subscribed(subscribed_to)
 
 
 class TagSerializer(ModelSerializer):
@@ -177,11 +166,7 @@ class RecipeSerializer(ModelSerializer):
             'cooking_time',
         )
 
-    def create(self, validated_data):
-        tags = validated_data.pop('tags')
-        ingredients = validated_data.pop('recipe_amount')
-        recipe = Recipe.objects.create(**validated_data)
-        recipe.tags.set(tags)
+    def create_IngredientAmountForRecipe_object(self, recipe, ingredients):
         IngredientAmountForRecipe.objects.bulk_create(
             IngredientAmountForRecipe(
                 recipe=recipe,
@@ -190,6 +175,13 @@ class RecipeSerializer(ModelSerializer):
             )
             for ingredient in ingredients
         )
+
+    def create(self, validated_data):
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('recipe_amount')
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags)
+        self.create_IngredientAmountForRecipe_object(recipe, ingredients)
         return recipe
 
     def validate(self, recipe_data):
@@ -217,20 +209,10 @@ class RecipeSerializer(ModelSerializer):
     def update(self, instance, validated_data):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('recipe_amount')
-        recipe = Recipe.objects.get(id=instance.id)
-        ingredient_ids = [ingredient['id'] for ingredient in ingredients]
         IngredientAmountForRecipe.objects.filter(
-            recipe=recipe,
-            ingredient_id__in=ingredient_ids
+            recipe=instance,
         ).delete()
-        IngredientAmountForRecipe.objects.bulk_create(
-            IngredientAmountForRecipe(
-                recipe=recipe,
-                ingredient_id=ingredient['id'].id,
-                amount=ingredient['amount']
-            )
-            for ingredient in ingredients
-        )
+        self.create_IngredientAmountForRecipe_object(instance, ingredients)
         instance.tags.set(tags)
         return super().update(instance, validated_data)
 
@@ -290,9 +272,7 @@ class FollowSerializer(ModelSerializer, IsSubscriberMixin):
         )
 
     def get_is_subscribed(self, follow_obj):
-        return IsSubscriberMixin.get_is_subscribed(
-            self, follow_obj.subscribed_to
-        )
+        return self.is_subscribed(follow_obj.subscribed_to)
 
     def get_recipes(self, follow_object):
         request = self.context.get('request')
