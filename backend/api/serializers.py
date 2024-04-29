@@ -166,7 +166,7 @@ class RecipeSerializer(ModelSerializer):
             'cooking_time',
         )
 
-    def create_IngredientAmountForRecipe_object(self, recipe, ingredients):
+    def create_ingredients(self, recipe, ingredients):
         IngredientAmountForRecipe.objects.bulk_create(
             IngredientAmountForRecipe(
                 recipe=recipe,
@@ -181,7 +181,7 @@ class RecipeSerializer(ModelSerializer):
         ingredients = validated_data.pop('recipe_amount')
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
-        self.create_IngredientAmountForRecipe_object(recipe, ingredients)
+        self.create_ingredients(recipe, ingredients)
         return recipe
 
     def validate(self, recipe_data):
@@ -212,7 +212,7 @@ class RecipeSerializer(ModelSerializer):
         IngredientAmountForRecipe.objects.filter(
             recipe=instance,
         ).delete()
-        self.create_IngredientAmountForRecipe_object(instance, ingredients)
+        self.create_ingredients(instance, ingredients)
         instance.tags.set(tags)
         return super().update(instance, validated_data)
 
