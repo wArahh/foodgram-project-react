@@ -1,0 +1,5 @@
+venv
+data
+foodgram/management
+.git
+db.sqlite3
