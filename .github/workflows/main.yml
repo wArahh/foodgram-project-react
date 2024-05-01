@@ -172,7 +172,6 @@ jobs:
   send_test_message:
     runs-on: ubuntu-latest
     needs:
-      - frontend_tests
       - tests
     steps:
       - name: Send message
