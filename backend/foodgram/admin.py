@@ -4,11 +4,11 @@ from .models import (FavoriteRecipe, Follow, Ingredient,
                      IngredientAmountForRecipe, Recipe, RecipeShoppingCart,
                      Tag, User)
 
-
-@admin.register(
-    User, Tag, Ingredient,
-    Recipe, IngredientAmountForRecipe,
-    FavoriteRecipe, RecipeShoppingCart, Follow
-)
-class AllModelsAdmin(admin.ModelAdmin):
-    list_display = ('__all__',)
+admin.site.register(User)
+admin.site.register(Tag)
+admin.site.register(Ingredient)
+admin.site.register(Recipe)
+admin.site.register(IngredientAmountForRecipe)
+admin.site.register(FavoriteRecipe)
+admin.site.register(RecipeShoppingCart)
+admin.site.register(Follow)
