@@ -1,4 +1,4 @@
-[![Main Foodgram workflow](https://github.com/wArahh/oodgram-project-react/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/wArahh/kittygram_final/actions/workflows/main.yml)
+[![Main Foodgram workflow](https://github.com/wArahh/foodgram-project-react/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/wArahh/kittygram_final/actions/workflows/main.yml)
 
 # Foodgram
 Данный проект создан для создания и публикаций рецептов.
