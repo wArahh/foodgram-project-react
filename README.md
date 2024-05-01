@@ -1,5 +1,5 @@
 [![Main Foodgram workflow](https://github.com/wArahh/foodgram-project-react/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/wArahh/kittygram_final/actions/workflows/main.yml)
-
+my_syte = https://warahsfoodgram.ddns.net/
 # Foodgram
 Данный проект создан для создания и публикаций рецептов.
 
