@@ -11,4 +11,4 @@ from .models import (FavoriteRecipe, Follow, Ingredient,
     FavoriteRecipe, RecipeShoppingCart, Follow
 )
 class AllModelsAdmin(admin.ModelAdmin):
-    list_display = '__all__'
+    list_display = ('__all__',)
