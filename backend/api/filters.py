@@ -1,5 +1,5 @@
 from django_filters.rest_framework import filters, FilterSet
-from foodgram.models import FavoriteRecipe, Recipe, RecipeShoppingCart, Tag
+from foodgram.models import Recipe, Tag
 
 
 class RecipeFilter(FilterSet):
